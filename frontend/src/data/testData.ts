@@ -1,6 +1,8 @@
+import type { Player, Monster, Enemy, Item } from "../types/game";
+
 // ===== テストデータ =====
 
-export const PLAYER = {
+export const PLAYER: Player = {
   id: "player-001",
   name: "ギルドマスター",
   level: 5,
@@ -11,10 +13,10 @@ export const PLAYER = {
   maxHp: 100,
   mp: 45,
   maxMp: 60,
-  syncStatus: "synced", // synced | pending | offline
+  syncStatus: "synced",
 };
 
-export const MONSTERS = [
+export const MONSTERS: Monster[] = [
   {
     id: "mon-001",
     name: "スライム",
@@ -102,7 +104,7 @@ export const MONSTERS = [
   },
 ];
 
-export const ITEMS = [
+export const ITEMS: Item[] = [
   { id: "item-001", name: "ポーション", type: "消耗品", quantity: 5, effect: "HP+30", sprite: "🧪" },
   { id: "item-002", name: "エーテル", type: "消耗品", quantity: 2, effect: "MP+20", sprite: "💧" },
   { id: "item-003", name: "どうのつるぎ", type: "武器", quantity: 1, effect: "ATK+8", sprite: "⚔️" },
@@ -110,14 +112,14 @@ export const ITEMS = [
   { id: "item-005", name: "まほうのタマゴ", type: "特殊", quantity: 3, effect: "捕獲率+10%", sprite: "🥚" },
 ];
 
-export const ENEMIES = [
+export const ENEMIES: Enemy[] = [
   { id: "e-001", name: "スライムKING", type: "水", level: 6, hp: 80, maxHp: 80, mp: 30, maxMp: 30, atk: 20, def: 10, spd: 8, sprite: "🟦", reward: { exp: 60, gold: 30 }, catchRate: 0.25 },
   { id: "e-002", name: "オーク", type: "地", level: 7, hp: 100, maxHp: 100, mp: 15, maxMp: 15, atk: 28, def: 22, spd: 6, sprite: "👹", reward: { exp: 80, gold: 40 }, catchRate: 0.15 },
   { id: "e-003", name: "ウィッチ", type: "闇", level: 8, hp: 60, maxHp: 60, mp: 80, maxMp: 80, atk: 35, def: 8, spd: 16, sprite: "🧙", reward: { exp: 100, gold: 55 }, catchRate: 0.1 },
 ];
 
 // 2Dタイルマップ (0=草, 1=水, 2=木, 3=岩, 4=道, 5=町, 6=ダンジョン)
-export const TILE_MAP = [
+export const TILE_MAP: number[][] = [
   [2, 2, 0, 0, 0, 0, 0, 2, 2, 2],
   [2, 0, 0, 4, 4, 4, 0, 0, 2, 2],
   [0, 0, 4, 4, 5, 4, 4, 0, 0, 2],
@@ -130,17 +132,17 @@ export const TILE_MAP = [
   [0, 0, 3, 3, 0, 0, 0, 0, 6, 0],
 ];
 
-export const TILE_COLORS = {
-  0: "#4a7c59", // 草
-  1: "#3a7bd5", // 水
-  2: "#2d5a1b", // 木
-  3: "#7a6a5a", // 岩
-  4: "#c8a96a", // 道
-  5: "#e8d5a3", // 町
-  6: "#4a3a6a", // ダンジョン
+export const TILE_COLORS: Record<number, string> = {
+  0: "#4a7c59",
+  1: "#3a7bd5",
+  2: "#2d5a1b",
+  3: "#7a6a5a",
+  4: "#c8a96a",
+  5: "#e8d5a3",
+  6: "#4a3a6a",
 };
 
-export const TILE_SYMBOLS = {
+export const TILE_SYMBOLS: Record<number, string> = {
   0: "",
   1: "≋",
   2: "🌲",
@@ -150,4 +152,4 @@ export const TILE_SYMBOLS = {
   6: "⚔",
 };
 
-export const ENEMY_SPAWN_TILES = [0, 3]; // 草と岩でエンカウント
+export const ENEMY_SPAWN_TILES: number[] = [0, 3];

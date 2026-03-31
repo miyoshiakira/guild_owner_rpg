@@ -3,9 +3,18 @@ import {
   Box, Card, CardContent, Typography, Button, LinearProgress,
   Chip, Grid, Fade, Grow,
 } from "@mui/material";
+import type { LinearProgressProps } from "@mui/material";
 import { useGame } from "../store/gameStore";
+import type { Monster, Enemy } from "../types/game";
 
-function StatBar({ label, value, max, color }) {
+interface StatBarProps {
+  label: string;
+  value: number;
+  max: number;
+  color: LinearProgressProps["color"];
+}
+
+function StatBar({ label, value, max, color }: StatBarProps) {
   return (
     <Box sx={{ mb: 0.5 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -17,44 +26,63 @@ function StatBar({ label, value, max, color }) {
   );
 }
 
+type BattlePhase = "command" | "result" | "end";
+type Command = "attack" | "skill" | "catch" | "run";
+
+interface CommandButton {
+  cmd: Command;
+  label: string;
+  color: "error" | "primary" | "secondary" | "inherit";
+}
+
+const COMMANDS: CommandButton[] = [
+  { cmd: "attack", label: "⚔ こうげき", color: "error" },
+  { cmd: "skill", label: "✨ スキル", color: "primary" },
+  { cmd: "catch", label: "🥚 捕獲", color: "secondary" },
+  { cmd: "run", label: "💨 逃げる", color: "inherit" },
+];
+
 export default function BattlePage() {
   const { state, dispatch } = useGame();
   const { battleState, player, monsters } = state;
-  const partyMon = monsters.filter((m) => m.isParty).slice(0, 1)[0];
 
-  const [enemy, setEnemy] = useState({ ...battleState.enemy });
-  const [ally, setAlly] = useState({ ...partyMon });
-  const [log, setLog] = useState(["バトル開始！"]);
-  const [phase, setPhase] = useState("command"); // command | result | end
+  const partyMon = monsters.find((m) => m.isParty);
+  if (!battleState || !partyMon) {
+    dispatch({ type: "END_BATTLE" });
+    return null;
+  }
 
-  const addLog = (msg) => setLog((prev) => [msg, ...prev].slice(0, 5));
+  const [enemy, setEnemy] = useState<Enemy>({ ...battleState.enemy });
+  const [ally, setAlly] = useState<Monster>({ ...partyMon });
+  const [log, setLog] = useState<string[]>(["バトル開始！"]);
+  const [phase, setPhase] = useState<BattlePhase>("command");
 
-  const handleCommand = (cmd) => {
+  const addLog = (msg: string) => setLog((prev) => [msg, ...prev].slice(0, 5));
+
+  const handleCommand = (cmd: Command) => {
     if (phase !== "command") return;
     setPhase("result");
 
     let newEnemy = { ...enemy };
     let newAlly = { ...ally };
-    let msgs = [];
+    const msgs: string[] = [];
 
     if (cmd === "attack") {
       const dmg = Math.max(1, ally.atk - newEnemy.def / 2 + Math.floor(Math.random() * 6));
       newEnemy.hp = Math.max(0, newEnemy.hp - dmg);
       msgs.push(`${ally.name}の攻撃！ ${enemy.name}に${dmg}のダメージ！`);
     } else if (cmd === "skill") {
-      const skill = ally.skills[1] || ally.skills[0];
-      const dmg = Math.max(1, ally.atk * 1.5 - newEnemy.def / 2 + Math.floor(Math.random() * 8));
-      newEnemy.hp = Math.max(0, newEnemy.hp - Math.floor(dmg));
-      msgs.push(`${ally.name}は${skill}を使った！ ${enemy.name}に${Math.floor(dmg)}のダメージ！`);
+      const skill = ally.skills[1] ?? ally.skills[0] ?? "たいあたり";
+      const dmg = Math.floor(Math.max(1, ally.atk * 1.5 - newEnemy.def / 2 + Math.floor(Math.random() * 8)));
+      newEnemy.hp = Math.max(0, newEnemy.hp - dmg);
+      msgs.push(`${ally.name}は${skill}を使った！ ${enemy.name}に${dmg}のダメージ！`);
     } else if (cmd === "catch") {
-      const success = Math.random() < (enemy.catchRate || 0.2) * (1 - newEnemy.hp / newEnemy.maxHp) * 2;
+      const success = Math.random() < enemy.catchRate * (1 - newEnemy.hp / newEnemy.maxHp) * 2;
       if (success) {
         msgs.push(`${newEnemy.name}を仲間にした！`);
         dispatch({
           type: "ADD_MONSTER",
-          payload: {
-            ...battleState.enemy, id: `mon-${Date.now()}`, hp: newEnemy.hp, isParty: false,
-          },
+          payload: { ...battleState.enemy, id: `mon-${Date.now()}`, hp: newEnemy.hp, isParty: false },
         });
         dispatch({ type: "NOTIFY", payload: { message: `🎉 ${newEnemy.name}が仲間になった！`, severity: "success" } });
         setLog(msgs);
@@ -64,7 +92,6 @@ export default function BattlePage() {
         msgs.push(`${newEnemy.name}は逃げ出した！ 捕獲失敗…`);
       }
     } else if (cmd === "run") {
-      msgs.push("逃げ出した！");
       dispatch({ type: "END_BATTLE" });
       return;
     }
@@ -81,9 +108,9 @@ export default function BattlePage() {
     msgs.forEach((m) => addLog(m));
 
     if (newEnemy.hp <= 0) {
-      addLog(`${newEnemy.name}を倒した！ EXP+${newEnemy.reward?.exp} Gold+${newEnemy.reward?.gold}`);
-      dispatch({ type: "UPDATE_PLAYER", payload: { exp: player.exp + (newEnemy.reward?.exp || 50), gold: player.gold + (newEnemy.reward?.gold || 20) } });
-      dispatch({ type: "NOTIFY", payload: { message: `${newEnemy.name}を倒した！ EXP+${newEnemy.reward?.exp}`, severity: "success" } });
+      addLog(`${newEnemy.name}を倒した！ EXP+${newEnemy.reward.exp} Gold+${newEnemy.reward.gold}`);
+      dispatch({ type: "UPDATE_PLAYER", payload: { exp: player.exp + newEnemy.reward.exp, gold: player.gold + newEnemy.reward.gold } });
+      dispatch({ type: "NOTIFY", payload: { message: `${newEnemy.name}を倒した！ EXP+${newEnemy.reward.exp}`, severity: "success" } });
       setPhase("end");
     } else if (newAlly.hp <= 0) {
       addLog(`${newAlly.name}は倒れた…`);
@@ -145,12 +172,7 @@ export default function BattlePage() {
         {/* コマンド */}
         {phase !== "end" ? (
           <Grid container spacing={1}>
-            {[
-              { cmd: "attack", label: "⚔ こうげき", color: "error" },
-              { cmd: "skill", label: "✨ スキル", color: "primary" },
-              { cmd: "catch", label: "🥚 捕獲", color: "secondary" },
-              { cmd: "run", label: "💨 逃げる", color: "inherit" },
-            ].map(({ cmd, label, color }) => (
+            {COMMANDS.map(({ cmd, label, color }) => (
               <Grid item xs={6} key={cmd}>
                 <Button variant="contained" color={color} fullWidth size="large" onClick={() => handleCommand(cmd)} disabled={phase !== "command"}>
                   {label}

@@ -2,19 +2,23 @@ import { useState } from "react";
 import {
   Box, Grid, Card, CardContent, Typography, Chip, Button,
   Drawer, List, ListItem, ListItemText, Divider, LinearProgress,
-  Avatar, Badge, Tooltip,
 } from "@mui/material";
 import ShieldIcon from "@mui/icons-material/Shield";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import HealingIcon from "@mui/icons-material/Healing";
 import { useGame } from "../store/gameStore";
 import { ITEMS } from "../data/testData";
+import type { Monster, MonsterType } from "../types/game";
 
-const TYPE_COLORS = {
-  水: "primary", 地: "warning", 光: "secondary", 炎: "error", 闇: "default",
+const TYPE_COLORS: Record<MonsterType, "primary" | "warning" | "secondary" | "error" | "default"> = {
+  水: "primary",
+  地: "warning",
+  光: "secondary",
+  炎: "error",
+  闇: "default",
 };
 
-function MonsterCard({ monster }) {
+function MonsterCard({ monster }: { monster: Monster }) {
   const hpPct = (monster.hp / monster.maxHp) * 100;
   const mpPct = (monster.mp / monster.maxMp) * 100;
   return (
@@ -28,7 +32,7 @@ function MonsterCard({ monster }) {
           <Box>
             <Typography variant="subtitle1" fontWeight={700}>{monster.name}</Typography>
             <Box sx={{ display: "flex", gap: 0.5 }}>
-              <Chip label={monster.type} color={TYPE_COLORS[monster.type] || "default"} size="small" />
+              <Chip label={monster.type} color={TYPE_COLORS[monster.type]} size="small" />
               <Chip label={`Lv.${monster.level}`} size="small" variant="outlined" />
             </Box>
           </Box>
@@ -38,7 +42,7 @@ function MonsterCard({ monster }) {
         <Typography variant="caption" color="text.secondary">MP</Typography>
         <LinearProgress variant="determinate" value={mpPct} color="primary" sx={{ height: 6, borderRadius: 3, mb: 1 }} />
         <Grid container spacing={1}>
-          {[["ATK", monster.atk], ["DEF", monster.def], ["SPD", monster.spd]].map(([k, v]) => (
+          {([["ATK", monster.atk], ["DEF", monster.def], ["SPD", monster.spd]] as [string, number][]).map(([k, v]) => (
             <Grid item xs={4} key={k}>
               <Box sx={{ textAlign: "center", bgcolor: "rgba(255,255,255,0.05)", borderRadius: 1, p: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">{k}</Typography>

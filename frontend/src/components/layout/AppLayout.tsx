@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AppBar, Box, Toolbar, Typography, IconButton, Chip,
   Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
@@ -13,29 +13,30 @@ import CloudOffIcon from "@mui/icons-material/CloudOff";
 import SyncIcon from "@mui/icons-material/Sync";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useGame } from "../../store/gameStore";
+import type { Scene, SyncStatus } from "../../types/game";
 
 const DRAWER_WIDTH = 220;
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { label: string; icon: ReactNode; scene: Scene }[] = [
   { label: "ギルドハウス", icon: <HomeIcon />, scene: "guild" },
   { label: "フィールド", icon: <ExploreIcon />, scene: "field" },
   { label: "モンスター名簿", icon: <PeopleIcon />, scene: "roster" },
 ];
 
-function SyncChip({ status }) {
+function SyncChip({ status }: { status: SyncStatus }) {
   if (status === "synced") return <Chip icon={<CloudDoneIcon />} label="同期済" color="success" size="small" />;
   if (status === "pending") return <Chip icon={<SyncIcon />} label="同期中..." color="warning" size="small" />;
   return <Chip icon={<CloudOffIcon />} label="オフライン" color="error" size="small" />;
 }
 
-export default function AppLayout({ children }) {
+export default function AppLayout({ children }: { children: ReactNode }) {
   const { state, dispatch } = useGame();
   const { player, notification, scene } = state;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const navigate = (s) => {
+  const navigate = (s: Scene) => {
     dispatch({ type: "SET_SCENE", payload: s });
     setDrawerOpen(false);
   };
@@ -112,7 +113,7 @@ export default function AppLayout({ children }) {
       {isMobile && (
         <BottomNavigation
           value={NAV_ITEMS.findIndex((n) => n.scene === scene)}
-          onChange={(_, v) => navigate(NAV_ITEMS[v].scene)}
+          onChange={(_, v: number) => navigate(NAV_ITEMS[v]!.scene)}
           sx={{ position: "fixed", bottom: 0, left: 0, right: 0, bgcolor: "background.paper", borderTop: "1px solid rgba(255,255,255,0.08)" }}
         >
           {NAV_ITEMS.map((item) => (
@@ -129,7 +130,7 @@ export default function AppLayout({ children }) {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         {notification && (
-          <Alert severity={notification.severity || "info"} sx={{ width: "100%" }}>
+          <Alert severity={notification.severity} sx={{ width: "100%" }}>
             {notification.message}
           </Alert>
         )}
