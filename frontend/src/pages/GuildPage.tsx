@@ -336,8 +336,9 @@ export default function GuildPage() {
   const storageItems = equipment.filter((e) => !e.equippedTo);
 
   const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+    // distance: 指/マウスが動き始めた瞬間にドラッグ開始（時間待機なし）
+    useSensor(MouseSensor,  { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor,  { activationConstraint: { distance: 4 } })
   );
 
   // useCallback で参照を固定し、sensors の再生成を防ぐ
