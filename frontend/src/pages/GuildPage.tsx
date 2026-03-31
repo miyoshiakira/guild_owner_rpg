@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -9,12 +9,12 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  pointerWithin,
   type DragEndEvent,
-  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   Box, Grid, Card, CardContent, Typography, Chip, LinearProgress,
-  Divider, IconButton, Tooltip, useMediaQuery, useTheme,
+  Divider, IconButton, Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useGame } from "../store/gameStore";
@@ -32,8 +32,34 @@ const TYPE_COLORS: Record<string, string> = {
   水: "#3a7bd5", 地: "#c8a96a", 光: "#ffd740", 炎: "#f44336", 闇: "#7c4dff",
 };
 
+// ===== ドラッグ中フローティングプレビュー =====
+// useDndContext で直接取得することで、親の state 変更なしに表示できる
+// → ドラッグ開始時の GuildPage 再レンダリングを完全に排除
+const DragPreview = memo(function DragPreview() {
+  const { active } = useDndContext();
+  const eq = (active?.data.current as { eq?: Equipment } | null)?.eq;
+  if (!eq) return null;
+  return (
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: 0.75,
+      px: 1.5, py: 0.75,
+      bgcolor: "background.paper",
+      border: "1.5px solid", borderColor: "primary.main",
+      borderRadius: 2,
+      boxShadow: "0 4px 20px rgba(124,77,255,0.5)",
+      fontSize: 13, fontWeight: 600,
+      pointerEvents: "none", whiteSpace: "nowrap",
+      // GPU合成レイヤーを事前確保してフレームドロップを抑制
+      willChange: "transform",
+    }}>
+      <span style={{ fontSize: 18 }}>{eq.sprite}</span>
+      {eq.name}
+    </Box>
+  );
+});
+
 // ===== 装備チップ（ドラッグ元） =====
-function EquipChip({ eq, compact = false }: { eq: Equipment; compact?: boolean }) {
+const EquipChip = memo(function EquipChip({ eq, compact = false }: { eq: Equipment; compact?: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: eq.id,
     data: { eq },
@@ -68,15 +94,16 @@ function EquipChip({ eq, compact = false }: { eq: Equipment; compact?: boolean }
       </Box>
     </Tooltip>
   );
-}
+});
 
 // ===== 装備スロット（ドロップ先） =====
-function DroppableSlot({ id, slot, equippedItem }: {
+// useDndContext は active/over が変わったときのみ再レンダリング（マウス移動では発火しない）
+const DroppableSlot = memo(function DroppableSlot({ id, slot, equippedItem }: {
   id: string; slot: EquipSlot; equippedItem: Equipment | undefined;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id });
   const { active } = useDndContext();
-  const activeEq = active?.data.current?.eq as Equipment | undefined;
+  const activeEq = (active?.data.current as { eq?: Equipment } | null)?.eq;
   const compatible = activeEq ? activeEq.slot === slot : true;
   const meta = SLOT_META[slot];
 
@@ -97,10 +124,13 @@ function DroppableSlot({ id, slot, equippedItem }: {
         px: 1.25,
         py: 0.85,
         borderRadius: 1.5,
+        // transition はホバー時の色変化のみ。transform は使わないので paint に閉じる
         border: `1.5px dashed ${borderColor}`,
         bgcolor: bg,
         minHeight: 40,
-        transition: "border-color 0.12s, background-color 0.12s",
+        transition: "border-color 0.1s, background-color 0.1s",
+        // このコンテナ内の layout 変化を外部に伝播させない
+        contain: "layout style",
       }}
     >
       <Typography fontSize={16} sx={{ opacity: 0.65, flexShrink: 0, lineHeight: 1 }}>
@@ -115,10 +145,10 @@ function DroppableSlot({ id, slot, equippedItem }: {
       )}
     </Box>
   );
-}
+});
 
-// ===== 倉庫パネル（取り外し用ドロップゾーン） =====
-function StoragePanel({ items }: { items: Equipment[] }) {
+// ===== 倉庫パネル =====
+const StoragePanel = memo(function StoragePanel({ items }: { items: Equipment[] }) {
   const { isOver, setNodeRef } = useDroppable({ id: "storage" });
   return (
     <Box
@@ -129,16 +159,15 @@ function StoragePanel({ items }: { items: Equipment[] }) {
         border: isOver ? "1.5px solid #ffd740" : "1.5px dashed rgba(255,255,255,0.12)",
         bgcolor: isOver ? "rgba(255,215,64,0.05)" : "rgba(255,255,255,0.02)",
         minHeight: 56,
-        transition: "border-color 0.12s, background-color 0.12s",
+        transition: "border-color 0.1s, background-color 0.1s",
+        contain: "layout style",
       }}
     >
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
         📦 倉庫 — ここにドロップで取り外し
       </Typography>
       {items.length === 0 ? (
-        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: "italic" }}>
-          空き
-        </Typography>
+        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: "italic" }}>空き</Typography>
       ) : (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
           {items.map((eq) => <EquipChip key={eq.id} eq={eq} />)}
@@ -146,10 +175,10 @@ function StoragePanel({ items }: { items: Equipment[] }) {
       )}
     </Box>
   );
-}
+});
 
 // ===== 一覧: 正方形アイコンセル =====
-function MonsterCell({ monster, onClick }: { monster: Monster; onClick: () => void }) {
+const MonsterCell = memo(function MonsterCell({ monster, onClick }: { monster: Monster; onClick: () => void }) {
   return (
     <Box
       onClick={onClick}
@@ -170,17 +199,14 @@ function MonsterCell({ monster, onClick }: { monster: Monster; onClick: () => vo
         transition: "transform 0.12s, box-shadow 0.12s",
         "&:hover": {
           transform: "translateY(-2px)",
-          boxShadow: `0 6px 20px rgba(0,0,0,0.4)`,
+          boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
           borderColor: "rgba(124,77,255,0.5)",
         },
         "&:active": { transform: "scale(0.97)" },
       }}
     >
       {monster.isParty && (
-        <Box sx={{
-          position: "absolute", top: 6, right: 6,
-          width: 8, height: 8, borderRadius: "50%", bgcolor: "success.main",
-        }} />
+        <Box sx={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", bgcolor: "success.main" }} />
       )}
       <Typography sx={{ fontSize: { xs: 36, sm: 40 }, lineHeight: 1 }}>
         {monster.sprite}
@@ -193,10 +219,10 @@ function MonsterCell({ monster, onClick }: { monster: Monster; onClick: () => vo
       </Typography>
     </Box>
   );
-}
+});
 
 // ===== 詳細画面 =====
-function MonsterDetail({
+const MonsterDetail = memo(function MonsterDetail({
   monster,
   allEquipment,
   storageItems,
@@ -223,7 +249,6 @@ function MonsterDetail({
 
   return (
     <Box>
-      {/* ヘッダー */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
         <IconButton size="small" onClick={onBack} sx={{ mr: 0.5 }}>
           <ArrowBackIcon fontSize="small" />
@@ -241,7 +266,6 @@ function MonsterDetail({
       </Box>
 
       <Grid container spacing={2}>
-        {/* 左: ステータス + 装備スロット */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
@@ -286,7 +310,6 @@ function MonsterDetail({
           </Card>
         </Grid>
 
-        {/* 右: 装備品倉庫 */}
         <Grid item xs={12} md={6}>
           <Card sx={{ height: "100%" }}>
             <CardContent>
@@ -295,26 +318,19 @@ function MonsterDetail({
                 スロットへドラッグして装備 / 倉庫へ戻すと取り外し
               </Typography>
               <StoragePanel items={storageItems} />
-
-              {storageItems.length === 0 && (
-                <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 1 }}>
-                  すべての装備品がどこかのモンスターに装備されています
-                </Typography>
-              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
     </Box>
   );
-}
+});
 
 // ===== メインページ =====
 export default function GuildPage() {
   const { state, dispatch } = useGame();
   const { monsters, equipment } = state;
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeEquip, setActiveEquip] = useState<Equipment | null>(null);
 
   const selectedMonster = selectedId ? monsters.find((m) => m.id === selectedId) ?? null : null;
   const storageItems = equipment.filter((e) => !e.equippedTo);
@@ -324,12 +340,8 @@ export default function GuildPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
-  const handleDragStart = (e: DragStartEvent) => {
-    setActiveEquip((e.active.data.current?.eq as Equipment) ?? null);
-  };
-
-  const handleDragEnd = (e: DragEndEvent) => {
-    setActiveEquip(null);
+  // useCallback で参照を固定し、sensors の再生成を防ぐ
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
     const { active, over } = e;
     if (!over) return;
     const equipmentId = active.id as string;
@@ -341,13 +353,14 @@ export default function GuildPage() {
       const [monsterId, slot] = overId.split(":") as [string, EquipSlot];
       dispatch({ type: "EQUIP", payload: { equipmentId, monsterId, slot } });
     }
-  };
+  }, [dispatch]);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    // pointerWithin: ポインタが重なったドロップゾーンのみ有効化。
+    // デフォルトの rectIntersection より計算が軽く、操作感も自然
+    <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
 
-        {/* ===== 一覧画面 ===== */}
         {!selectedMonster && (
           <>
             <Typography variant="h6" sx={{ mb: 2 }}>🐾 モンスター管理</Typography>
@@ -361,7 +374,6 @@ export default function GuildPage() {
           </>
         )}
 
-        {/* ===== 詳細画面 ===== */}
         {selectedMonster && (
           <MonsterDetail
             monster={selectedMonster}
@@ -372,23 +384,10 @@ export default function GuildPage() {
         )}
       </Box>
 
-      {/* ドラッグ中フローティングプレビュー */}
+      {/* DragPreview は useDndContext で active を直接参照するため、
+          親に state を持つ必要がなく、ドラッグ開始時の GuildPage 再レンダリングが発生しない */}
       <DragOverlay dropAnimation={null}>
-        {activeEquip && (
-          <Box sx={{
-            display: "inline-flex", alignItems: "center", gap: 0.75,
-            px: 1.5, py: 0.75,
-            bgcolor: "background.paper",
-            border: "1.5px solid", borderColor: "primary.main",
-            borderRadius: 2,
-            boxShadow: "0 4px 20px rgba(124,77,255,0.5)",
-            fontSize: 13, fontWeight: 600,
-            pointerEvents: "none", whiteSpace: "nowrap",
-          }}>
-            <span style={{ fontSize: 18 }}>{activeEquip.sprite}</span>
-            {activeEquip.name}
-          </Box>
-        )}
+        <DragPreview />
       </DragOverlay>
     </DndContext>
   );
