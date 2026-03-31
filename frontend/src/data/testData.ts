@@ -1,4 +1,4 @@
-import type { Player, Monster, Enemy, Item } from "../types/game";
+import type { Player, Monster, Enemy, Item, Equipment } from "../types/game";
 
 // ===== テストデータ =====
 
@@ -33,6 +33,7 @@ export const MONSTERS: Monster[] = [
     sprite: "🟦",
     skills: ["たいあたり", "みずしぶき"],
     isParty: true,
+    equipped: { weapon: null, armor: "eq-002", accessory: null },
   },
   {
     id: "mon-002",
@@ -50,6 +51,7 @@ export const MONSTERS: Monster[] = [
     sprite: "🐺",
     skills: ["ひっかく", "どろだんご"],
     isParty: true,
+    equipped: { weapon: "eq-001", armor: null, accessory: null },
   },
   {
     id: "mon-003",
@@ -67,6 +69,7 @@ export const MONSTERS: Monster[] = [
     sprite: "🧚",
     skills: ["ヒール", "ひかりのかぜ"],
     isParty: true,
+    equipped: { weapon: null, armor: null, accessory: "eq-003" },
   },
   {
     id: "mon-004",
@@ -84,6 +87,7 @@ export const MONSTERS: Monster[] = [
     sprite: "👺",
     skills: ["たいあたり"],
     isParty: false,
+    equipped: { weapon: null, armor: null, accessory: null },
   },
   {
     id: "mon-005",
@@ -101,7 +105,24 @@ export const MONSTERS: Monster[] = [
     sprite: "🐉",
     skills: ["ひのいき", "かみつく", "たいあたり"],
     isParty: false,
+    equipped: { weapon: null, armor: null, accessory: null },
   },
+];
+
+export const EQUIPMENT: Equipment[] = [
+  // 武器
+  { id: "eq-001", name: "ブロンズソード", slot: "weapon", effect: "ATK+10", atkBonus: 10, defBonus: 0, spdBonus: 0, sprite: "⚔️", equippedTo: "mon-002" },
+  { id: "eq-004", name: "フレイムブレード", slot: "weapon", effect: "ATK+18", atkBonus: 18, defBonus: 0, spdBonus: 0, sprite: "🔥", equippedTo: null },
+  { id: "eq-007", name: "ドラゴンスレイヤー", slot: "weapon", effect: "ATK+25", atkBonus: 25, defBonus: 0, spdBonus: 0, sprite: "🗡️", equippedTo: null },
+  { id: "eq-009", name: "まほうのつえ", slot: "weapon", effect: "ATK+8", atkBonus: 8, defBonus: 0, spdBonus: 0, sprite: "🪄", equippedTo: null },
+  // 防具
+  { id: "eq-002", name: "アイアンシールド", slot: "armor", effect: "DEF+8", atkBonus: 0, defBonus: 8, spdBonus: 0, sprite: "🛡️", equippedTo: "mon-001" },
+  { id: "eq-005", name: "ミスリルアーマー", slot: "armor", effect: "DEF+15", atkBonus: 0, defBonus: 15, spdBonus: 0, sprite: "✨", equippedTo: null },
+  { id: "eq-010", name: "シルクローブ", slot: "armor", effect: "DEF+5", atkBonus: 0, defBonus: 5, spdBonus: 0, sprite: "👘", equippedTo: null },
+  // アクセサリ
+  { id: "eq-003", name: "スピードリング", slot: "accessory", effect: "SPD+5", atkBonus: 0, defBonus: 0, spdBonus: 5, sprite: "💍", equippedTo: "mon-003" },
+  { id: "eq-006", name: "ラッキーチャーム", slot: "accessory", effect: "SPD+3", atkBonus: 0, defBonus: 0, spdBonus: 3, sprite: "🍀", equippedTo: null },
+  { id: "eq-008", name: "エルフのブーツ", slot: "accessory", effect: "SPD+8", atkBonus: 0, defBonus: 0, spdBonus: 8, sprite: "👟", equippedTo: null },
 ];
 
 export const ITEMS: Item[] = [

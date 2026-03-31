@@ -22,7 +22,6 @@ function GameRouter() {
     <AppLayout>
       {scene === "guild" && <GuildPage />}
       {scene === "field" && <FieldPage />}
-      {scene === "roster" && <GuildPage />}
     </AppLayout>
   );
 }

@@ -5,7 +5,6 @@ import {
   BottomNavigation, BottomNavigationAction, useMediaQuery, useTheme,
   LinearProgress, Snackbar, Alert,
 } from "@mui/material";
-import HomeIcon from "@mui/icons-material/Home";
 import ExploreIcon from "@mui/icons-material/Explore";
 import PeopleIcon from "@mui/icons-material/People";
 import CloudDoneIcon from "@mui/icons-material/CloudDone";
@@ -18,9 +17,8 @@ import type { Scene, SyncStatus } from "../../types/game";
 const DRAWER_WIDTH = 220;
 
 const NAV_ITEMS: { label: string; icon: ReactNode; scene: Scene }[] = [
-  { label: "ギルドハウス", icon: <HomeIcon />, scene: "guild" },
+  { label: "モンスター管理", icon: <PeopleIcon />, scene: "guild" },
   { label: "フィールド", icon: <ExploreIcon />, scene: "field" },
-  { label: "モンスター名簿", icon: <PeopleIcon />, scene: "roster" },
 ];
 
 function SyncChip({ status }: { status: SyncStatus }) {
@@ -79,9 +77,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="h6" sx={{ flexGrow: 1, color: "primary.main" }}>
-            ⚔ Guild Owner RPG
-          </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mr: 1 }}>
             <Chip label={`Lv.${player.level}`} color="primary" size="small" />
             <Chip label={`💰 ${player.gold}G`} color="secondary" size="small" variant="outlined" />

@@ -3,8 +3,9 @@
 export type SyncStatus = "synced" | "pending" | "offline";
 export type MonsterType = "水" | "地" | "光" | "炎" | "闇";
 export type ItemType = "消耗品" | "武器" | "防具" | "特殊";
-export type Scene = "login" | "guild" | "field" | "roster" | "battle";
+export type Scene = "login" | "guild" | "field" | "battle";
 export type NotificationSeverity = "success" | "error" | "warning" | "info";
+export type EquipSlot = "weapon" | "armor" | "accessory";
 
 export interface Player {
   id: string;
@@ -18,6 +19,18 @@ export interface Player {
   mp: number;
   maxMp: number;
   syncStatus: SyncStatus;
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  slot: EquipSlot;
+  effect: string;
+  atkBonus: number;
+  defBonus: number;
+  spdBonus: number;
+  sprite: string;
+  equippedTo: string | null; // monster id or null (= in storage)
 }
 
 export interface Monster {
@@ -36,6 +49,7 @@ export interface Monster {
   sprite: string;
   skills: string[];
   isParty: boolean;
+  equipped: Record<EquipSlot, string | null>;
 }
 
 export interface Enemy {
@@ -77,6 +91,7 @@ export interface BattleState {
 export interface GameState {
   player: Player;
   monsters: Monster[];
+  equipment: Equipment[];
   items: Item[];
   scene: Scene;
   notification: Notification | null;
@@ -90,4 +105,6 @@ export type GameAction =
   | { type: "UPDATE_PLAYER"; payload: Partial<Player> }
   | { type: "ADD_MONSTER"; payload: Monster }
   | { type: "START_BATTLE"; payload: BattleState }
-  | { type: "END_BATTLE" };
+  | { type: "END_BATTLE" }
+  | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
+  | { type: "UNEQUIP"; payload: { equipmentId: string } };
