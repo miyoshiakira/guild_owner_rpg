@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box, Card, CardContent, Typography, Button, LinearProgress,
-  Grid, Fade, Grow,
+  Fade,
 } from "@mui/material";
 import type { LinearProgressProps } from "@mui/material";
 import { useGame } from "../store/gameStore";
 import type { Monster, Enemy } from "../types/game";
 import { SpriteImage } from "../components/SpriteImage";
+import { processBattleDrops } from "../utils/dropUtils";
+import BattleEndModal from "../components/BattleEndModal";
 
 interface StatBarProps {
   label: string;
@@ -47,12 +49,115 @@ export default function BattlePage() {
     return null;
   }
 
+  // 戦闘終了時のドロップ処理
+  const handleEndBattle = (victory: boolean = true) => {
+    if (!victory) {
+      // 敗北時
+      setBattleResult({ victory: false });
+      setShowResult(true);
+      return;
+    }
+
+    // 戦闘開始時に保持した敵報酬を使用
+    let totalGold = enemyRewards.gold;
+    let totalExp = enemyRewards.exp;
+    const drops: Record<string, number> = {};
+    const levelUps: Array<{
+      monsterId: string;
+      monsterName: string;
+      fromLevel: number;
+      toLevel: number;
+    }> = [];
+
+    // ドロップ処理（倒した敵のみ）
+    const defeatedEnemies = enemies.filter(e => e.hp <= 0);
+    defeatedEnemies.forEach(enemy => {
+      const enemyDrops = processBattleDrops([enemy.id]);
+      Object.entries(enemyDrops).forEach(([materialId, qty]) => {
+        drops[materialId] = (drops[materialId] || 0) + qty;
+      });
+    });
+
+    // パーティモンスターにEXP分配とレベルアップチェック
+    const expPerMonster = Math.floor(totalExp / allies.filter(a => a.hp > 0).length);
+    
+    allies.filter(a => a.hp > 0).forEach(ally => {
+      const fromLevel = ally.level;
+      let newExp = ally.exp + expPerMonster;
+      let newLevel = fromLevel;
+      
+      // レベルアップチェック
+      while (newExp >= ally.expNext) {
+        newExp -= ally.expNext;
+        newLevel++;
+        levelUps.push({
+          monsterId: ally.id,
+          monsterName: ally.name,
+          fromLevel: fromLevel,
+          toLevel: newLevel,
+        });
+      }
+      
+      // 仮のEXP更新（実際の適用は結果画面で）
+      ally.exp = newExp;
+      ally.level = newLevel;
+    });
+
+    // 報酬をセットして結果画面を表示
+    setBattleResult({
+      victory: true,
+      rewards: {
+        gold: totalGold,
+        exp: totalExp,
+        materials: drops,
+        levelUps,
+      },
+    });
+    setShowResult(true);
+  };
+
   const [enemies, setEnemies] = useState<Enemy[]>(() => battleState.enemies.map((e) => ({ ...e })));
   const [allies, setAllies] = useState<Monster[]>(() => partyMonsters.map((m) => ({ ...m })));
   const [activeAllyIdx, setActiveAllyIdx] = useState(0);
   const [pendingCmd, setPendingCmd] = useState<Command | null>(null);
   const [log, setLog] = useState<string[]>(["バトル開始！"]);
   const [phase, setPhase] = useState<BattlePhase>("command");
+  const [showResult, setShowResult] = useState(false);
+  const [battleResult, setBattleResult] = useState<{
+    victory: boolean;
+    rewards?: {
+      gold: number;
+      exp: number;
+      materials: Record<string, number>;
+      levelUps: Array<{
+        monsterId: string;
+        monsterName: string;
+        fromLevel: number;
+        toLevel: number;
+      }>;
+    };
+  }>({ victory: false });
+
+  // 戦闘開始時の敵報酬を保持
+  const [enemyRewards, setEnemyRewards] = useState<{ gold: number; exp: number }>({ gold: 0, exp: 0 });
+
+  // 戦闘開始時に敵報酬を計算
+  useEffect(() => {
+    if (battleState) {
+      const totalGold = battleState.enemies.reduce((sum, e) => sum + e.reward.gold, 0);
+      const totalExp = battleState.enemies.reduce((sum, e) => sum + e.reward.exp, 0);
+      setEnemyRewards({ gold: totalGold, exp: totalExp });
+    }
+  }, [battleState]);
+
+  // 敗北判定と自動モーダル表示
+  useEffect(() => {
+    if (phase === "end" && allies.every((a) => a.hp <= 0)) {
+      // 敗北時は即座にモーダル表示
+      setBattleResult({ victory: false });
+      setShowResult(true);
+    }
+  }, [phase, allies]);
 
   const aliveEnemyIdxs = enemies.reduce<number[]>((acc, e, i) => {
     if (e.hp > 0) acc.push(i);
@@ -83,15 +188,22 @@ export default function BattlePage() {
   };
 
   const advanceTurn = (newEnemies: Enemy[], newAllies: Monster[], actionMsgs: string[], allyIdx: number) => {
-    if (newEnemies.every((e) => e.hp <= 0)) {
-      const totalExp = battleState.enemies.reduce((sum, e) => sum + e.reward.exp, 0);
-      const totalGold = battleState.enemies.reduce((sum, e) => sum + e.reward.gold, 0);
-      dispatch({ type: "UPDATE_PLAYER", payload: { exp: player.exp + totalExp, gold: player.gold + totalGold } });
-      dispatch({ type: "NOTIFY", payload: { message: `勝利！ EXP+${totalExp} Gold+${totalGold}`, severity: "success" } });
+    // 敗北判定
+    if (newAllies.every((a) => a.hp <= 0)) {
       setEnemies(newEnemies);
       setAllies(newAllies);
-      batchLog([...actionMsgs, `全員倒した！ EXP+${totalExp} Gold+${totalGold}`]);
+      batchLog([...actionMsgs, "全員倒れてしまった..."]);
       setPhase("end");
+      return;
+    }
+
+    if (newEnemies.every((e) => e.hp <= 0)) {
+      setEnemies(newEnemies);
+      setAllies(newAllies);
+      batchLog([...actionMsgs, "全員倒した！"]);
+      setPhase("end");
+      // 状態更新後に勝利処理を呼び出し
+      setTimeout(() => handleEndBattle(true), 100);
       return;
     }
 
@@ -155,6 +267,8 @@ export default function BattlePage() {
             personality: "普通",
             skills: [],
             equipped: { weapon: null, armor: null, accessory: null },
+            exp: 0,
+            expNext: 50,
           } as Monster,
         });
         dispatch({ type: "NOTIFY", payload: { message: `🎉 ${target.name}が仲間になった！`, severity: "success" } });
@@ -169,7 +283,7 @@ export default function BattlePage() {
   const handleCommand = (cmd: Command) => {
     if (phase !== "command") return;
     if (cmd === "run") {
-      dispatch({ type: "END_BATTLE" });
+      handleEndBattle();
       return;
     }
     if (aliveEnemyIdxs.length === 1) {
@@ -188,18 +302,18 @@ export default function BattlePage() {
   const activeAlly = allies[activeAllyIdx];
 
   return (
-    <Fade in>
-      {/* 画面全体を viewport に収める */}
-      <Box sx={{
-        height: "calc(100vh - 48px)",
-        bgcolor: "#0d0d2e",
-        display: "flex",
-        flexDirection: "column",
-        p: 1,
-        gap: 1,
-        overflow: "hidden",
-        boxSizing: "border-box",
-      }}>
+    <>
+      <Fade in>
+        <Box sx={{
+          height: "calc(100vh - 48px)",
+          bgcolor: "#0d0d2e",
+          display: "flex",
+          flexDirection: "column",
+          p: 1,
+          gap: 1,
+          overflow: "hidden",
+          boxSizing: "border-box",
+        }}>
 
         {/* タイトル */}
         <Typography variant="subtitle2" sx={{ color: "primary.main", textAlign: "center", flexShrink: 0 }}>
@@ -215,7 +329,7 @@ export default function BattlePage() {
               敵 {aliveEnemyIdxs.length}/{enemies.length}
             </Typography>
             {enemies.map((enemy, i) => (
-              <Grow in key={`${enemy.id}-${i}`}>
+              <Fade in={true} timeout={300} key={`${enemy.id}-${i}`}>
                 <Card sx={{
                   bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
                   border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
@@ -235,7 +349,7 @@ export default function BattlePage() {
                     <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
                   </CardContent>
                 </Card>
-              </Grow>
+              </Fade>
             ))}
           </Box>
 
@@ -247,7 +361,7 @@ export default function BattlePage() {
             {allies.map((ally, i) => {
               const isActive = i === activeAllyIdx && phase !== "end" && ally.hp > 0;
               return (
-                <Grow in key={ally.id} style={{ transitionDelay: `${i * 60}ms` }}>
+                <Fade in={true} timeout={300} key={ally.id} style={{ transitionDelay: `${i * 60}ms` }}>
                   <Card sx={{
                     bgcolor: ally.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(76,175,80,0.1)",
                     border: `1px solid ${isActive ? "#4caf50" : ally.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(76,175,80,0.3)"}`,
@@ -269,7 +383,7 @@ export default function BattlePage() {
                       <StatBar label="MP" value={ally.mp} max={ally.maxMp} color="primary" />
                     </CardContent>
                   </Card>
-                </Grow>
+                </Fade>
               );
             })}
           </Box>
@@ -294,8 +408,8 @@ export default function BattlePage() {
 
         {/* コマンド / ターゲット選択 / 終了 */}
         <Box sx={{ flexShrink: 0 }}>
-          {phase === "end" ? (
-            <Button variant="contained" size="large" fullWidth onClick={() => dispatch({ type: "END_BATTLE" })}>
+          {phase === "end" && allies.some(a => a.hp > 0) ? (
+            <Button variant="contained" size="large" fullWidth onClick={() => handleEndBattle(true)}>
               フィールドへ戻る
             </Button>
           ) : phase === "targeting" ? (
@@ -303,48 +417,56 @@ export default function BattlePage() {
               <Typography variant="caption" color="warning.main" sx={{ mb: 0.5, display: "block" }}>
                 ターゲットを選択
               </Typography>
-              <Grid container spacing={0.75}>
+              <Box sx={{ display: "grid", gridTemplateColumns: aliveEnemyIdxs.length === 1 ? "1fr" : "1fr 1fr", gap: 1 }}>
                 {aliveEnemyIdxs.map((i) => (
-                  <Grid item xs={aliveEnemyIdxs.length === 1 ? 12 : 6} key={i}>
-                    <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)}>
-                      {enemies[i]!.sprite} {enemies[i]!.name}
-                    </Button>
-                  </Grid>
-                ))}
-                <Grid item xs={12}>
-                  <Button variant="text" color="inherit" fullWidth size="small"
-                    onClick={() => { setPendingCmd(null); setPhase("command"); }}>
-                    戻る
+                  <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)} key={i}>
+                    {enemies[i]!.sprite} {enemies[i]!.name}
                   </Button>
-                </Grid>
-              </Grid>
+                ))}
+                <Button variant="text" color="inherit" fullWidth size="small"
+                  onClick={() => { setPendingCmd(null); setPhase("command"); }}>
+                  戻る
+                </Button>
+              </Box>
             </>
           ) : (
             <>
               <Typography variant="caption" color="success.main" sx={{ mb: 0.5, display: "block" }}>
                 {activeAlly?.name} のターン
               </Typography>
-              <Grid container spacing={0.75}>
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                 {COMMANDS.map(({ cmd, label, color }) => (
-                  <Grid item xs={6} key={cmd}>
-                    <Button
-                      variant="contained"
-                      color={color}
-                      fullWidth
-                      onClick={() => handleCommand(cmd)}
-                      disabled={phase !== "command"}
-                      sx={{ py: 1 }}
-                    >
-                      {label}
-                    </Button>
-                  </Grid>
+                  <Button
+                    variant={cmd === "attack" ? "contained" : cmd === "skill" ? "contained" : "outlined"}
+                    color={color}
+                    fullWidth
+                    onClick={() => handleCommand(cmd)}
+                    disabled={phase !== "command"}
+                    sx={{ py: 1 }}
+                    key={cmd}
+                  >
+                    {label}
+                  </Button>
                 ))}
-              </Grid>
+              </Box>
             </>
           )}
         </Box>
 
       </Box>
-    </Fade>
+
+      </Fade>
+
+      {/* Battle End Modal */}
+      <BattleEndModal
+        open={showResult}
+        victory={battleResult.victory}
+        rewards={battleResult.rewards}
+        onClose={() => {
+          setShowResult(false);
+          dispatch({ type: "END_BATTLE" });
+        }}
+      />
+    </>
   );
 }

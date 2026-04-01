@@ -50,6 +50,8 @@ export interface Monster {
   skills: string[];
   isParty: boolean;
   equipped: Record<EquipSlot, string | null>;
+  exp: number;
+  expNext: number;
 }
 
 /** ドロップテーブルの1エントリ */
@@ -121,4 +123,6 @@ export type GameAction =
   | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials">> }
   | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
   | { type: "ADD_MATERIALS"; payload: Record<string, number> }
-  | { type: "CRAFT"; payload: import("./masters").CraftRecipe };
+  | { type: "CRAFT"; payload: import("./masters").CraftRecipe }
+  | { type: "ADD_MONSTER_EXP"; payload: { monsterId: string; exp: number } }
+  | { type: "LEVEL_UP_MONSTER"; payload: { monsterId: string } };

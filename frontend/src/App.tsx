@@ -6,6 +6,8 @@ import LoginPage from "./pages/LoginPage";
 import GuildPage from "./pages/GuildPage";
 import FieldPage from "./pages/FieldPage";
 import BattlePage from "./pages/BattlePage";
+import ItemsPage from "./pages/ItemsPage";
+import CraftPage from "./pages/CraftPage";
 
 function GameRouter() {
   const { state } = useGame();
@@ -22,6 +24,8 @@ function GameRouter() {
     <AppLayout>
       {scene === "guild" && <GuildPage />}
       {scene === "field" && <FieldPage />}
+      {scene === "items" && <ItemsPage />}
+      {scene === "craft" && <CraftPage />}
     </AppLayout>
   );
 }

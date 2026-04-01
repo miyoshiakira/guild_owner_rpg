@@ -2,12 +2,14 @@ import { createContext, useContext, useReducer, useEffect, useRef, type ReactNod
 import { saveGameData } from "../db/saveService";
 import { PLAYER, MONSTERS, ITEMS, EQUIPMENT } from "../data/testData";
 import type { GameState, GameAction, EquipSlot } from "../types/game";
+import type { CraftRecipe } from "../types/masters";
 
 const initialState: GameState = {
   player: { ...PLAYER },
   monsters: MONSTERS.map((m) => ({ ...m, equipped: { ...m.equipped } })),
   equipment: EQUIPMENT.map((e) => ({ ...e })),
   items: [...ITEMS],
+  materials: {}, // 素材アイテムの所持数
   scene: "login",
   notification: null,
   battleState: null,
@@ -105,6 +107,124 @@ function reducer(state: GameState, action: GameAction): GameState {
         ),
       };
     }
+
+    case "ADD_MATERIALS": {
+      const newMaterials = { ...state.materials };
+      Object.entries(action.payload).forEach(([materialId, qty]) => {
+        newMaterials[materialId] = Math.max(0, (newMaterials[materialId] || 0) + qty);
+        if (newMaterials[materialId] === 0) {
+          delete newMaterials[materialId];
+        }
+      });
+      return { ...state, materials: newMaterials };
+    }
+
+    case "CRAFT": {
+      const recipe = action.payload;
+      
+      // 素材はADD_MATERIALSで別途消費されるため、ここでは結果のアイテム/装備品のみ追加
+      
+      if (recipe.result.type === "equipment") {
+        const newEquipment = {
+          id: `eq-${Date.now()}`,
+          name: recipe.result.name,
+          slot: recipe.result.slot,
+          effect: recipe.result.effect,
+          atkBonus: recipe.result.atkBonus,
+          defBonus: recipe.result.defBonus,
+          spdBonus: recipe.result.spdBonus,
+          sprite: recipe.result.sprite,
+          equippedTo: null,
+        };
+        
+        const newEquipmentList = Array(recipe.resultQty).fill(null).map((_, index) => ({
+          ...newEquipment,
+          id: `${newEquipment.id}-${index}`,
+        }));
+        
+        return {
+          ...state,
+          equipment: [...state.equipment, ...newEquipmentList],
+        };
+      } else {
+        // 消耗品の場合
+        const result = recipe.result as any; // 型アサーションで回避
+        const existingItem = state.items.find(item => item.id === result.id);
+        
+        if (existingItem) {
+          return {
+            ...state,
+            items: state.items.map(item =>
+              item.id === result.id
+                ? { ...item, quantity: item.quantity + recipe.resultQty }
+                : item
+            ),
+          };
+        } else {
+          const newItem = {
+            id: result.id,
+            name: result.name,
+            type: result.itemType,
+            quantity: recipe.resultQty,
+            effect: result.effect,
+            sprite: result.sprite,
+          };
+          return {
+            ...state,
+            items: [...state.items, newItem],
+          };
+        }
+      }
+    }
+
+    case "ADD_MONSTER_EXP": {
+      const { monsterId, exp } = action.payload;
+      return {
+        ...state,
+        monsters: state.monsters.map((monster) =>
+          monster.id === monsterId
+            ? { ...monster, exp: monster.exp + exp }
+            : monster
+        ),
+      };
+    }
+
+    case "LEVEL_UP_MONSTER": {
+      const { monsterId } = action.payload;
+      return {
+        ...state,
+        monsters: state.monsters.map((monster) => {
+          if (monster.id !== monsterId) return monster;
+
+          const newLevel = monster.level + 1;
+          const newExpNext = Math.floor(monster.expNext * 1.5); // 次のレベルに必要なEXPを1.5倍に
+
+          // ステータス上昇（レベルアップ時）
+          const hpIncrease = Math.floor(Math.random() * 5) + 3; // 3-7
+          const mpIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
+          const atkIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
+          const defIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
+          const spdIncrease = Math.floor(Math.random() * 2) + 1; // 1-2
+
+          return {
+            ...monster,
+            level: newLevel,
+            exp: monster.exp - monster.expNext, // 余りEXPを次のレベルに繰越
+            expNext: newExpNext,
+            maxHp: monster.maxHp + hpIncrease,
+            hp: monster.maxHp + hpIncrease, // レベルアップ時は全回復
+            maxMp: monster.maxMp + mpIncrease,
+            mp: monster.maxMp + mpIncrease, // レベルアップ時は全回復
+            atk: monster.atk + atkIncrease,
+            def: monster.def + defIncrease,
+            spd: monster.spd + spdIncrease,
+          };
+        }),
+      };
+    }
+
+    default:
+      return state;
   }
 }
 

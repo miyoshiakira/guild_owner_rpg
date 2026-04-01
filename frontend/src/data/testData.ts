@@ -34,6 +34,8 @@ export const MONSTERS: Monster[] = [
     skills: ["なぐる", "おたけび"],
     isParty: true,
     equipped: { weapon: null, armor: null, accessory: null },
+    exp: 0,
+    expNext: 50,
   },
   {
     id: "mon-002",
@@ -52,6 +54,8 @@ export const MONSTERS: Monster[] = [
     skills: ["ヒール", "ひかりのかぜ"],
     isParty: true,
     equipped: { weapon: null, armor: null, accessory: null },
+    exp: 0,
+    expNext: 50,
   },
   {
     id: "mon-003",
@@ -70,6 +74,8 @@ export const MONSTERS: Monster[] = [
     skills: ["たいあたり", "みずしぶき"],
     isParty: true,
     equipped: { weapon: null, armor: null, accessory: null },
+    exp: 0,
+    expNext: 50,
   },
 ];
 
@@ -87,9 +93,9 @@ export const EQUIPMENT: Equipment[] = [
 export const ITEMS: Item[] = [];
 
 export const ENEMIES: Enemy[] = [
-  { id: "e-001", name: "スライムKING", type: "水", level: 6, hp: 80, maxHp: 80, mp: 30, maxMp: 30, atk: 20, def: 10, spd: 8, sprite: "SlimeBasic.png", reward: { exp: 60, gold: 30 }, catchRate: 0.25 },
-  { id: "e-002", name: "オーク", type: "地", level: 7, hp: 100, maxHp: 100, mp: 15, maxMp: 15, atk: 28, def: 22, spd: 6, sprite: "DefaultBoy.png", reward: { exp: 80, gold: 40 }, catchRate: 0.15 },
-  { id: "e-003", name: "ウィッチ", type: "闇", level: 8, hp: 60, maxHp: 60, mp: 80, maxMp: 80, atk: 35, def: 8, spd: 16, sprite: "DefaultGirl.png", reward: { exp: 100, gold: 55 }, catchRate: 0.1 },
+  { id: "e-001", name: "スライムKING", type: "水", level: 6, hp: 80, maxHp: 80, mp: 30, maxMp: 30, atk: 20, def: 10, spd: 8, sprite: "SlimeBasic.png", reward: { exp: 120, gold: 60 }, catchRate: 0.25 },
+  { id: "e-002", name: "オーク", type: "地", level: 7, hp: 100, maxHp: 100, mp: 15, maxMp: 15, atk: 28, def: 22, spd: 6, sprite: "DefaultBoy.png", reward: { exp: 160, gold: 80 }, catchRate: 0.15 },
+  { id: "e-003", name: "ウィッチ", type: "闇", level: 8, hp: 60, maxHp: 60, mp: 80, maxMp: 80, atk: 35, def: 8, spd: 16, sprite: "DefaultGirl.png", reward: { exp: 200, gold: 110 }, catchRate: 0.1 },
 ];
 
 // 2Dタイルマップ (0=草, 1=水, 2=木, 3=岩, 4=道, 5=町, 6=ダンジョン)

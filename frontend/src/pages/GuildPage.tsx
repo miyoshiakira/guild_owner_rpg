@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import {
   Box, Grid, Card, CardContent, Typography, Chip,
-  Divider, IconButton, Tooltip, Checkbox,
+  Divider, IconButton, Tooltip, Checkbox, LinearProgress,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useGame } from "../store/gameStore";
@@ -322,6 +322,29 @@ const MonsterDetail = memo(function MonsterDetail({
                     )}
                   </Box>
                 ))}
+              </Box>
+
+              {/* 経験値バー */}
+              <Box sx={{ mb: 1.5 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">経験値</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {monster.exp} / {monster.expNext}
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={(monster.exp / monster.expNext) * 100}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    bgcolor: "rgba(255,255,255,0.1)",
+                    "& .MuiLinearProgress-bar": {
+                      bgcolor: "secondary.main",
+                      borderRadius: 4,
+                    },
+                  }}
+                />
               </Box>
 
               <Typography variant="caption" color="text.secondary">

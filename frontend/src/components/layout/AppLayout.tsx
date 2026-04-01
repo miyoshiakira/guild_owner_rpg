@@ -3,10 +3,12 @@ import {
   AppBar, Box, Toolbar, Typography, IconButton, Chip,
   Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   BottomNavigation, BottomNavigationAction, useMediaQuery, useTheme,
-  LinearProgress, Snackbar, Alert,
+  Snackbar, Alert,
 } from "@mui/material";
 import ExploreIcon from "@mui/icons-material/Explore";
 import PeopleIcon from "@mui/icons-material/People";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import ConstructionIcon from "@mui/icons-material/Construction";
 import CloudDoneIcon from "@mui/icons-material/CloudDone";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import SyncIcon from "@mui/icons-material/Sync";
@@ -17,8 +19,10 @@ import type { Scene, SyncStatus } from "../../types/game";
 const DRAWER_WIDTH = 220;
 
 const NAV_ITEMS: { label: string; icon: ReactNode; scene: Scene }[] = [
-  { label: "モンスター管理", icon: <PeopleIcon />, scene: "guild" },
+  { label: "モンスター", icon: <PeopleIcon />, scene: "guild" },
   { label: "フィールド", icon: <ExploreIcon />, scene: "field" },
+  { label: "アイテム", icon: <InventoryIcon />, scene: "items" },
+  { label: "クラフト", icon: <ConstructionIcon />, scene: "craft" },
 ];
 
 function SyncChip({ status }: { status: SyncStatus }) {
@@ -39,17 +43,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     setDrawerOpen(false);
   };
 
-  const hpPct = (player.hp / player.maxHp) * 100;
-  const expPct = (player.exp / player.expNext) * 100;
-
   const navContent = (
     <Box sx={{ width: DRAWER_WIDTH, pt: 2 }}>
-      <Box sx={{ px: 2, pb: 2 }}>
-        <Typography variant="caption" color="text.secondary">HP</Typography>
-        <LinearProgress variant="determinate" value={hpPct} color="error" sx={{ mb: 0.5, height: 8, borderRadius: 4 }} />
-        <Typography variant="caption" color="text.secondary">EXP</Typography>
-        <LinearProgress variant="determinate" value={expPct} color="secondary" sx={{ height: 6, borderRadius: 4 }} />
-      </Box>
       <List>
         {NAV_ITEMS.map((item) => (
           <ListItem key={item.scene} disablePadding>
@@ -124,11 +119,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         onClose={() => dispatch({ type: "CLEAR_NOTIFY" })}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        {notification && (
-          <Alert severity={notification.severity} sx={{ width: "100%" }}>
-            {notification.message}
-          </Alert>
-        )}
+        <Alert severity={notification?.severity || "info"} sx={{ width: "100%" }}>
+          {notification?.message}
+        </Alert>
       </Snackbar>
     </Box>
   );
