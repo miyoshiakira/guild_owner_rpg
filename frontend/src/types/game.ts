@@ -3,7 +3,7 @@
 export type SyncStatus = "synced" | "pending" | "offline";
 export type MonsterType = "水" | "地" | "光" | "炎" | "闇";
 export type ItemType = "消耗品" | "武器" | "防具" | "特殊";
-export type Scene = "login" | "guild" | "field" | "battle";
+export type Scene = "login" | "guild" | "field" | "battle" | "items" | "craft";
 export type NotificationSeverity = "success" | "error" | "warning" | "info";
 export type EquipSlot = "weapon" | "armor" | "accessory";
 
@@ -52,6 +52,14 @@ export interface Monster {
   equipped: Record<EquipSlot, string | null>;
 }
 
+/** ドロップテーブルの1エントリ */
+export interface DropEntry {
+  materialId: string;
+  rate: number;    // 0.0〜1.0
+  minQty: number;
+  maxQty: number;
+}
+
 export interface Enemy {
   id: string;
   name: string;
@@ -67,6 +75,7 @@ export interface Enemy {
   sprite: string;
   reward: { exp: number; gold: number };
   catchRate: number;
+  drops?: DropEntry[];
 }
 
 export interface Item {
@@ -84,7 +93,7 @@ export interface Notification {
 }
 
 export interface BattleState {
-  enemy: Enemy;
+  enemies: Enemy[];
   turn: number;
 }
 
@@ -93,6 +102,7 @@ export interface GameState {
   monsters: Monster[];
   equipment: Equipment[];
   items: Item[];
+  materials: Record<string, number>; // materialId → 個数
   scene: Scene;
   notification: Notification | null;
   battleState: BattleState | null;
@@ -107,4 +117,8 @@ export type GameAction =
   | { type: "START_BATTLE"; payload: BattleState }
   | { type: "END_BATTLE" }
   | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
-  | { type: "UNEQUIP"; payload: { equipmentId: string } };
+  | { type: "UNEQUIP"; payload: { equipmentId: string } }
+  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials">> }
+  | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
+  | { type: "ADD_MATERIALS"; payload: Record<string, number> }
+  | { type: "CRAFT"; payload: import("./masters").CraftRecipe };

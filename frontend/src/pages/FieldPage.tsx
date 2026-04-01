@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Box, Card, CardContent, Typography, Chip, Button, useMediaQuery, useTheme } from "@mui/material";
 import { useGame } from "../store/gameStore";
 import { TILE_MAP, TILE_COLORS, TILE_SYMBOLS, ENEMY_SPAWN_TILES, ENEMIES } from "../data/testData";
+import { loadGameData, saveGameData } from "../db/saveService";
 
 const TILE_SIZE = 48;
 const MAP_ROWS = TILE_MAP.length;
@@ -131,6 +132,23 @@ export default function FieldPage() {
   const [playerPos, setPlayerPos] = useState<PlayerPos>({ row: 2, col: 4 });
   const [stepCount, setStepCount] = useState(0);
 
+  // マップ座標をDBからロード
+  useEffect(() => {
+    loadGameData().then((saved) => {
+      if (saved.playerPos) setPlayerPos(saved.playerPos);
+    });
+  }, []);
+
+  // マップ座標をDBへデバウンスセーブ
+  const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (posTimer.current) clearTimeout(posTimer.current);
+    posTimer.current = setTimeout(() => {
+      saveGameData({ playerPos });
+    }, 1000);
+    return () => { if (posTimer.current) clearTimeout(posTimer.current); };
+  }, [playerPos]);
+
   const tryMove = useCallback((dr: number, dc: number) => {
     setPlayerPos((prev) => {
       const nr = prev.row + dr;
@@ -140,12 +158,14 @@ export default function FieldPage() {
       if (!WALKABLE.includes(tile)) return prev;
 
       if (ENEMY_SPAWN_TILES.includes(tile) && Math.random() < 0.2) {
-        const enemy = ENEMIES[Math.floor(Math.random() * ENEMIES.length)]!;
+        const r = Math.random();
+        const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
+        const spawnedEnemies = Array.from({ length: count }, (_, k) => {
+          const e = ENEMIES[Math.floor(Math.random() * ENEMIES.length)]!;
+          return { ...e, hp: e.maxHp, id: `${e.id}-${Date.now()}-${k}` };
+        });
         setTimeout(() => {
-          dispatch({
-            type: "START_BATTLE",
-            payload: { enemy: { ...enemy, hp: enemy.maxHp }, turn: 0 },
-          });
+          dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
         }, 200);
       }
 

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
   Box, Card, CardContent, Typography, Button, LinearProgress,
-  Chip, Grid, Fade, Grow,
+  Grid, Fade, Grow,
 } from "@mui/material";
 import type { LinearProgressProps } from "@mui/material";
 import { useGame } from "../store/gameStore";
 import type { Monster, Enemy } from "../types/game";
+import { SpriteImage } from "../components/SpriteImage";
 
 interface StatBarProps {
   label: string;
@@ -16,26 +17,20 @@ interface StatBarProps {
 
 function StatBar({ label, value, max, color }: StatBarProps) {
   return (
-    <Box sx={{ mb: 0.5 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography variant="caption">{value} / {max}</Typography>
+    <Box sx={{ mb: 0.4 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", lineHeight: 1 }}>
+        <Typography sx={{ fontSize: 10 }} color="text.secondary">{label}</Typography>
+        <Typography sx={{ fontSize: 10 }}>{value}/{max}</Typography>
       </Box>
-      <LinearProgress variant="determinate" value={(value / max) * 100} color={color} sx={{ height: 8, borderRadius: 4 }} />
+      <LinearProgress variant="determinate" value={(value / max) * 100} color={color} sx={{ height: 5, borderRadius: 3 }} />
     </Box>
   );
 }
 
-type BattlePhase = "command" | "result" | "end";
+type BattlePhase = "command" | "targeting" | "end";
 type Command = "attack" | "skill" | "catch" | "run";
 
-interface CommandButton {
-  cmd: Command;
-  label: string;
-  color: "error" | "primary" | "secondary" | "inherit";
-}
-
-const COMMANDS: CommandButton[] = [
+const COMMANDS: { cmd: Command; label: string; color: "error" | "primary" | "secondary" | "inherit" }[] = [
   { cmd: "attack", label: "⚔ こうげき", color: "error" },
   { cmd: "skill", label: "✨ スキル", color: "primary" },
   { cmd: "catch", label: "🥚 捕獲", color: "secondary" },
@@ -46,145 +41,309 @@ export default function BattlePage() {
   const { state, dispatch } = useGame();
   const { battleState, player, monsters } = state;
 
-  const partyMon = monsters.find((m) => m.isParty);
-  if (!battleState || !partyMon) {
+  const partyMonsters = monsters.filter((m) => m.isParty);
+  if (!battleState || partyMonsters.length === 0) {
     dispatch({ type: "END_BATTLE" });
     return null;
   }
 
-  const [enemy, setEnemy] = useState<Enemy>({ ...battleState.enemy });
-  const [ally, setAlly] = useState<Monster>({ ...partyMon });
+  const [enemies, setEnemies] = useState<Enemy[]>(() => battleState.enemies.map((e) => ({ ...e })));
+  const [allies, setAllies] = useState<Monster[]>(() => partyMonsters.map((m) => ({ ...m })));
+  const [activeAllyIdx, setActiveAllyIdx] = useState(0);
+  const [pendingCmd, setPendingCmd] = useState<Command | null>(null);
   const [log, setLog] = useState<string[]>(["バトル開始！"]);
   const [phase, setPhase] = useState<BattlePhase>("command");
 
-  const addLog = (msg: string) => setLog((prev) => [msg, ...prev].slice(0, 5));
+  const aliveEnemyIdxs = enemies.reduce<number[]>((acc, e, i) => {
+    if (e.hp > 0) acc.push(i);
+    return acc;
+  }, []);
 
-  const handleCommand = (cmd: Command) => {
-    if (phase !== "command") return;
-    setPhase("result");
+  const batchLog = (msgs: string[]) => {
+    if (msgs.length === 0) return;
+    setLog((prev) => [...[...msgs].reverse(), ...prev].slice(0, 8));
+  };
 
-    let newEnemy = { ...enemy };
-    let newAlly = { ...ally };
+  const doEnemyTurn = (curEnemies: Enemy[], curAllies: Monster[]): { updatedAllies: Monster[]; msgs: string[] } => {
+    const updated = curAllies.map((a) => ({ ...a }));
     const msgs: string[] = [];
+    for (const enemy of curEnemies) {
+      if (enemy.hp <= 0) continue;
+      const aliveIdxs = updated.reduce<number[]>((acc, a, i) => {
+        if (a.hp > 0) acc.push(i);
+        return acc;
+      }, []);
+      if (aliveIdxs.length === 0) break;
+      const tIdx = aliveIdxs[Math.floor(Math.random() * aliveIdxs.length)]!;
+      const dmg = Math.max(1, enemy.atk - updated[tIdx]!.def / 2 + Math.floor(Math.random() * 4));
+      updated[tIdx]!.hp = Math.max(0, updated[tIdx]!.hp - dmg);
+      msgs.push(`${enemy.name}の攻撃！ ${updated[tIdx]!.name}に${dmg}ダメージ！`);
+    }
+    return { updatedAllies: updated, msgs };
+  };
 
-    if (cmd === "attack") {
-      const dmg = Math.max(1, ally.atk - newEnemy.def / 2 + Math.floor(Math.random() * 6));
-      newEnemy.hp = Math.max(0, newEnemy.hp - dmg);
-      msgs.push(`${ally.name}の攻撃！ ${enemy.name}に${dmg}のダメージ！`);
-    } else if (cmd === "skill") {
-      const skill = ally.skills[1] ?? ally.skills[0] ?? "たいあたり";
-      const dmg = Math.floor(Math.max(1, ally.atk * 1.5 - newEnemy.def / 2 + Math.floor(Math.random() * 8)));
-      newEnemy.hp = Math.max(0, newEnemy.hp - dmg);
-      msgs.push(`${ally.name}は${skill}を使った！ ${enemy.name}に${dmg}のダメージ！`);
-    } else if (cmd === "catch") {
-      const success = Math.random() < enemy.catchRate * (1 - newEnemy.hp / newEnemy.maxHp) * 2;
-      if (success) {
-        msgs.push(`${newEnemy.name}を仲間にした！`);
-        dispatch({
-          type: "ADD_MONSTER",
-          payload: { ...battleState.enemy, id: `mon-${Date.now()}`, hp: newEnemy.hp, isParty: false },
-        });
-        dispatch({ type: "NOTIFY", payload: { message: `🎉 ${newEnemy.name}が仲間になった！`, severity: "success" } });
-        setLog(msgs);
-        setTimeout(() => dispatch({ type: "END_BATTLE" }), 1500);
-        return;
-      } else {
-        msgs.push(`${newEnemy.name}は逃げ出した！ 捕獲失敗…`);
-      }
-    } else if (cmd === "run") {
-      dispatch({ type: "END_BATTLE" });
+  const advanceTurn = (newEnemies: Enemy[], newAllies: Monster[], actionMsgs: string[], allyIdx: number) => {
+    if (newEnemies.every((e) => e.hp <= 0)) {
+      const totalExp = battleState.enemies.reduce((sum, e) => sum + e.reward.exp, 0);
+      const totalGold = battleState.enemies.reduce((sum, e) => sum + e.reward.gold, 0);
+      dispatch({ type: "UPDATE_PLAYER", payload: { exp: player.exp + totalExp, gold: player.gold + totalGold } });
+      dispatch({ type: "NOTIFY", payload: { message: `勝利！ EXP+${totalExp} Gold+${totalGold}`, severity: "success" } });
+      setEnemies(newEnemies);
+      setAllies(newAllies);
+      batchLog([...actionMsgs, `全員倒した！ EXP+${totalExp} Gold+${totalGold}`]);
+      setPhase("end");
       return;
     }
 
-    // 敵の反撃
-    if (newEnemy.hp > 0) {
-      const eDmg = Math.max(1, newEnemy.atk - newAlly.def / 2 + Math.floor(Math.random() * 4));
-      newAlly.hp = Math.max(0, newAlly.hp - eDmg);
-      msgs.push(`${newEnemy.name}の攻撃！ ${newAlly.name}に${eDmg}のダメージ！`);
-    }
+    const nextIdx = newAllies.findIndex((a, i) => i > allyIdx && a.hp > 0);
 
-    setEnemy(newEnemy);
-    setAlly(newAlly);
-    msgs.forEach((m) => addLog(m));
-
-    if (newEnemy.hp <= 0) {
-      addLog(`${newEnemy.name}を倒した！ EXP+${newEnemy.reward.exp} Gold+${newEnemy.reward.gold}`);
-      dispatch({ type: "UPDATE_PLAYER", payload: { exp: player.exp + newEnemy.reward.exp, gold: player.gold + newEnemy.reward.gold } });
-      dispatch({ type: "NOTIFY", payload: { message: `${newEnemy.name}を倒した！ EXP+${newEnemy.reward.exp}`, severity: "success" } });
-      setPhase("end");
-    } else if (newAlly.hp <= 0) {
-      addLog(`${newAlly.name}は倒れた…`);
-      setPhase("end");
+    if (nextIdx !== -1) {
+      setEnemies(newEnemies);
+      setAllies(newAllies);
+      batchLog(actionMsgs);
+      setActiveAllyIdx(nextIdx);
+      setPhase("command");
     } else {
+      const { updatedAllies, msgs: eMsgs } = doEnemyTurn(newEnemies, newAllies);
+      setEnemies(newEnemies);
+      setAllies(updatedAllies);
+      batchLog([...actionMsgs, ...eMsgs]);
+
+      if (updatedAllies.every((a) => a.hp <= 0)) {
+        setLog((prev) => ["全員やられた…", ...prev].slice(0, 8));
+        setPhase("end");
+        return;
+      }
+
+      const firstAlive = updatedAllies.findIndex((a) => a.hp > 0);
+      setActiveAllyIdx(firstAlive);
       setPhase("command");
     }
   };
 
+  const executeAction = (cmd: Command, targetEnemyIdx: number) => {
+    setPendingCmd(null);
+    const newEnemies = enemies.map((e) => ({ ...e }));
+    const newAllies = allies.map((a) => ({ ...a }));
+    const msgs: string[] = [];
+    const ally = newAllies[activeAllyIdx]!;
+    const target = newEnemies[targetEnemyIdx]!;
+
+    if (cmd === "attack") {
+      const dmg = Math.max(1, ally.atk - target.def / 2 + Math.floor(Math.random() * 6));
+      target.hp = Math.max(0, target.hp - dmg);
+      msgs.push(`${ally.name}の攻撃！ ${target.name}に${dmg}ダメージ！`);
+      if (target.hp <= 0) msgs.push(`${target.name}を倒した！`);
+    } else if (cmd === "skill") {
+      const skill = ally.skills[1] ?? ally.skills[0] ?? "たいあたり";
+      const dmg = Math.floor(Math.max(1, ally.atk * 1.5 - target.def / 2 + Math.floor(Math.random() * 8)));
+      target.hp = Math.max(0, target.hp - dmg);
+      msgs.push(`${ally.name}は${skill}を使った！ ${target.name}に${dmg}ダメージ！`);
+      if (target.hp <= 0) msgs.push(`${target.name}を倒した！`);
+    } else if (cmd === "catch") {
+      const rate = target.catchRate * (1 - target.hp / target.maxHp) * 2;
+      if (Math.random() < rate) {
+        msgs.push(`${target.name}を仲間にした！`);
+        target.hp = 0;
+        dispatch({
+          type: "ADD_MONSTER",
+          payload: {
+            ...battleState.enemies[targetEnemyIdx]!,
+            id: `mon-${Date.now()}`,
+            hp: 1,
+            isParty: false,
+            personality: "普通",
+            skills: [],
+            equipped: { weapon: null, armor: null, accessory: null },
+          } as Monster,
+        });
+        dispatch({ type: "NOTIFY", payload: { message: `🎉 ${target.name}が仲間になった！`, severity: "success" } });
+      } else {
+        msgs.push(`${target.name}は逃げ出した！ 捕獲失敗…`);
+      }
+    }
+
+    advanceTurn(newEnemies, newAllies, msgs, activeAllyIdx);
+  };
+
+  const handleCommand = (cmd: Command) => {
+    if (phase !== "command") return;
+    if (cmd === "run") {
+      dispatch({ type: "END_BATTLE" });
+      return;
+    }
+    if (aliveEnemyIdxs.length === 1) {
+      executeAction(cmd, aliveEnemyIdxs[0]!);
+    } else {
+      setPendingCmd(cmd);
+      setPhase("targeting");
+    }
+  };
+
+  const handleTargetSelect = (enemyIdx: number) => {
+    if (!pendingCmd) return;
+    executeAction(pendingCmd, enemyIdx);
+  };
+
+  const activeAlly = allies[activeAllyIdx];
+
   return (
     <Fade in>
-      <Box sx={{ p: 2, minHeight: "calc(100vh - 48px)", bgcolor: "#0d0d2e", display: "flex", flexDirection: "column" }}>
-        <Typography variant="h6" sx={{ mb: 2, color: "primary.main", textAlign: "center" }}>
+      {/* 画面全体を viewport に収める */}
+      <Box sx={{
+        height: "calc(100vh - 48px)",
+        bgcolor: "#0d0d2e",
+        display: "flex",
+        flexDirection: "column",
+        p: 1,
+        gap: 1,
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }}>
+
+        {/* タイトル */}
+        <Typography variant="subtitle2" sx={{ color: "primary.main", textAlign: "center", flexShrink: 0 }}>
           ⚔ バトル
         </Typography>
 
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          {/* 敵 */}
-          <Grid item xs={6}>
-            <Grow in>
-              <Card sx={{ bgcolor: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)" }}>
-                <CardContent>
-                  <Box sx={{ textAlign: "center", fontSize: 48, mb: 1 }}>{enemy.sprite}</Box>
-                  <Typography variant="subtitle1" fontWeight={700} textAlign="center">{enemy.name}</Typography>
-                  <Chip label={`Lv.${enemy.level}`} size="small" sx={{ display: "block", mx: "auto", mb: 1, width: "fit-content" }} />
-                  <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
-                </CardContent>
-              </Card>
-            </Grow>
-          </Grid>
+        {/* 左: 敵 ／ 右: 味方 */}
+        <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
 
-          {/* 味方 */}
-          <Grid item xs={6}>
-            <Grow in style={{ transitionDelay: "100ms" }}>
-              <Card sx={{ bgcolor: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)" }}>
-                <CardContent>
-                  <Box sx={{ textAlign: "center", fontSize: 48, mb: 1 }}>{ally.sprite}</Box>
-                  <Typography variant="subtitle1" fontWeight={700} textAlign="center">{ally.name}</Typography>
-                  <Chip label={`Lv.${ally.level}`} size="small" sx={{ display: "block", mx: "auto", mb: 1, width: "fit-content" }} />
-                  <StatBar label="HP" value={ally.hp} max={ally.maxHp} color="success" />
-                  <StatBar label="MP" value={ally.mp} max={ally.maxMp} color="primary" />
-                </CardContent>
-              </Card>
-            </Grow>
-          </Grid>
-        </Grid>
+          {/* 敵 (左) */}
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>
+            <Typography variant="caption" color="error.main" textAlign="center" display="block">
+              敵 {aliveEnemyIdxs.length}/{enemies.length}
+            </Typography>
+            {enemies.map((enemy, i) => (
+              <Grow in key={`${enemy.id}-${i}`}>
+                <Card sx={{
+                  bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
+                  border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
+                  opacity: enemy.hp <= 0 ? 0.35 : 1,
+                  transition: "opacity 0.3s",
+                }}>
+                  <CardContent sx={{ p: "6px 8px !important" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
+                      <SpriteImage sprite={enemy.sprite} size={36} alt={enemy.name} />
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                          {enemy.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{enemy.level}</Typography>
+                      </Box>
+                    </Box>
+                    <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
+                  </CardContent>
+                </Card>
+              </Grow>
+            ))}
+          </Box>
 
-        {/* バトルログ */}
-        <Card sx={{ mb: 2, bgcolor: "rgba(0,0,0,0.5)", flexGrow: 1 }}>
-          <CardContent>
+          {/* 味方 (右) */}
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>
+            <Typography variant="caption" color="success.main" textAlign="center" display="block">
+              味方 {allies.filter((a) => a.hp > 0).length}/{allies.length}
+            </Typography>
+            {allies.map((ally, i) => {
+              const isActive = i === activeAllyIdx && phase !== "end" && ally.hp > 0;
+              return (
+                <Grow in key={ally.id} style={{ transitionDelay: `${i * 60}ms` }}>
+                  <Card sx={{
+                    bgcolor: ally.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(76,175,80,0.1)",
+                    border: `1px solid ${isActive ? "#4caf50" : ally.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(76,175,80,0.3)"}`,
+                    opacity: ally.hp <= 0 ? 0.35 : 1,
+                    boxShadow: isActive ? "0 0 6px rgba(76,175,80,0.6)" : "none",
+                    transition: "all 0.3s",
+                  }}>
+                    <CardContent sx={{ p: "6px 8px !important" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
+                        <SpriteImage sprite={ally.sprite} size={36} alt={ally.name} />
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                            {ally.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{ally.level}</Typography>
+                        </Box>
+                      </Box>
+                      <StatBar label="HP" value={ally.hp} max={ally.maxHp} color="success" />
+                      <StatBar label="MP" value={ally.mp} max={ally.maxMp} color="primary" />
+                    </CardContent>
+                  </Card>
+                </Grow>
+              );
+            })}
+          </Box>
+        </Box>
+
+        {/* バトルログ (残りスペースを吸収) */}
+        <Card sx={{ bgcolor: "rgba(0,0,0,0.5)", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <CardContent sx={{ p: "8px 10px !important", height: "100%", overflow: "hidden" }}>
             {log.map((l, i) => (
-              <Typography key={i} variant="body2" color={i === 0 ? "white" : "text.secondary"} sx={{ opacity: 1 - i * 0.2 }}>
+              <Typography
+                key={i}
+                variant="caption"
+                display="block"
+                color={i === 0 ? "white" : "text.secondary"}
+                sx={{ opacity: Math.max(0.2, 1 - i * 0.18), lineHeight: 1.5 }}
+              >
                 {l}
               </Typography>
             ))}
           </CardContent>
         </Card>
 
-        {/* コマンド */}
-        {phase !== "end" ? (
-          <Grid container spacing={1}>
-            {COMMANDS.map(({ cmd, label, color }) => (
-              <Grid item xs={6} key={cmd}>
-                <Button variant="contained" color={color} fullWidth size="large" onClick={() => handleCommand(cmd)} disabled={phase !== "command"}>
-                  {label}
-                </Button>
+        {/* コマンド / ターゲット選択 / 終了 */}
+        <Box sx={{ flexShrink: 0 }}>
+          {phase === "end" ? (
+            <Button variant="contained" size="large" fullWidth onClick={() => dispatch({ type: "END_BATTLE" })}>
+              フィールドへ戻る
+            </Button>
+          ) : phase === "targeting" ? (
+            <>
+              <Typography variant="caption" color="warning.main" sx={{ mb: 0.5, display: "block" }}>
+                ターゲットを選択
+              </Typography>
+              <Grid container spacing={0.75}>
+                {aliveEnemyIdxs.map((i) => (
+                  <Grid item xs={aliveEnemyIdxs.length === 1 ? 12 : 6} key={i}>
+                    <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)}>
+                      {enemies[i]!.sprite} {enemies[i]!.name}
+                    </Button>
+                  </Grid>
+                ))}
+                <Grid item xs={12}>
+                  <Button variant="text" color="inherit" fullWidth size="small"
+                    onClick={() => { setPendingCmd(null); setPhase("command"); }}>
+                    戻る
+                  </Button>
+                </Grid>
               </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Button variant="contained" size="large" fullWidth onClick={() => dispatch({ type: "END_BATTLE" })}>
-            フィールドへ戻る
-          </Button>
-        )}
+            </>
+          ) : (
+            <>
+              <Typography variant="caption" color="success.main" sx={{ mb: 0.5, display: "block" }}>
+                {activeAlly?.name} のターン
+              </Typography>
+              <Grid container spacing={0.75}>
+                {COMMANDS.map(({ cmd, label, color }) => (
+                  <Grid item xs={6} key={cmd}>
+                    <Button
+                      variant="contained"
+                      color={color}
+                      fullWidth
+                      onClick={() => handleCommand(cmd)}
+                      disabled={phase !== "command"}
+                      sx={{ py: 1 }}
+                    >
+                      {label}
+                    </Button>
+                  </Grid>
+                ))}
+              </Grid>
+            </>
+          )}
+        </Box>
+
       </Box>
     </Fade>
   );
