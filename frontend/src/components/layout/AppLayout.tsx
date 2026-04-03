@@ -89,7 +89,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Drawer (Mobile) */}
       {isMobile && (
-        <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <Drawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          PaperProps={{ sx: { top: "48px" } }}
+          ModalProps={{ slotProps: { backdrop: { sx: { top: "48px" } } } }}
+        >
           {navContent}
         </Drawer>
       )}

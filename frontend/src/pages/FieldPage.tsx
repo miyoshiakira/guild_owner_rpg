@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Box, Card, CardContent, Typography, Chip, Button, useMediaQuery, useTheme } from "@mui/material";
 import { useGame } from "../store/gameStore";
-import { TILE_MAP, TILE_COLORS, TILE_SYMBOLS, ENEMY_SPAWN_TILES, ENEMIES } from "../data/testData";
+import { TILE_MAP, TILE_COLORS, TILE_SYMBOLS, ENEMY_SPAWN_TILES } from "../data/testData";
+import { ENEMY_MASTER } from "../data/masters/enemyMaster";
 import { loadGameData, saveGameData } from "../db/saveService";
 
 const TILE_SIZE = 48;
@@ -161,7 +162,7 @@ export default function FieldPage() {
         const r = Math.random();
         const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
         const spawnedEnemies = Array.from({ length: count }, (_, k) => {
-          const e = ENEMIES[Math.floor(Math.random() * ENEMIES.length)]!;
+          const e = ENEMY_MASTER[Math.floor(Math.random() * ENEMY_MASTER.length)]!;
           return { ...e, hp: e.maxHp, id: `${e.id}-${Date.now()}-${k}` };
         });
         setTimeout(() => {

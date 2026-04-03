@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Box, Card, CardContent, Typography, Button, LinearProgress,
   Fade,
 } from "@mui/material";
 import type { LinearProgressProps } from "@mui/material";
 import { useGame } from "../store/gameStore";
-import type { Monster, Enemy } from "../types/game";
+import type { Monster, Enemy, BattleRewards } from "../types/game";
 import { SpriteImage } from "../components/SpriteImage";
 import { processBattleDrops } from "../utils/dropUtils";
+import { getExpToNextLevel } from "../data/expTable";
 import BattleEndModal from "../components/BattleEndModal";
 
 interface StatBarProps {
@@ -39,85 +40,39 @@ const COMMANDS: { cmd: Command; label: string; color: "error" | "primary" | "sec
   { cmd: "run", label: "💨 逃げる", color: "inherit" },
 ];
 
+type BattleEndReason = "victory" | "defeat" | "run" | "scout";
+
+// 戦闘終了シグナル: advanceTurn でセットし useEffect でモーダルを開く
+interface BattleEndSignal {
+  reason: BattleEndReason;
+  finalAllies: Monster[]; // state コミット前に確定した味方データ
+}
+
 export default function BattlePage() {
   const { state, dispatch } = useGame();
-  const { battleState, player, monsters } = state;
+  const { battleState, monsters } = state;
 
-  const partyMonsters = monsters.filter((m) => m.isParty);
-  if (!battleState || partyMonsters.length === 0) {
-    dispatch({ type: "END_BATTLE" });
-    return null;
-  }
+  // ── すべての hooks を条件分岐より前に配置 ──────────────────────────────
+  const partyMonsters = useMemo(
+    () => monsters.filter((m) => m.isParty),
+    [monsters]
+  );
 
-  // 戦闘終了時のドロップ処理
-  const handleEndBattle = (victory: boolean = true) => {
-    if (!victory) {
-      // 敗北時
-      setBattleResult({ victory: false });
-      setShowResult(true);
-      return;
-    }
+  const enemyTotalGold = useMemo(
+    () => battleState?.enemies.reduce((sum, e) => sum + e.reward.gold, 0) ?? 0,
+    [battleState]
+  );
+  const enemyTotalExp = useMemo(
+    () => battleState?.enemies.reduce((sum, e) => sum + e.reward.exp, 0) ?? 0,
+    [battleState]
+  );
 
-    // 戦闘開始時に保持した敵報酬を使用
-    let totalGold = enemyRewards.gold;
-    let totalExp = enemyRewards.exp;
-    const drops: Record<string, number> = {};
-    const levelUps: Array<{
-      monsterId: string;
-      monsterName: string;
-      fromLevel: number;
-      toLevel: number;
-    }> = [];
-
-    // ドロップ処理（倒した敵のみ）
-    const defeatedEnemies = enemies.filter(e => e.hp <= 0);
-    defeatedEnemies.forEach(enemy => {
-      const enemyDrops = processBattleDrops([enemy.id]);
-      Object.entries(enemyDrops).forEach(([materialId, qty]) => {
-        drops[materialId] = (drops[materialId] || 0) + qty;
-      });
-    });
-
-    // パーティモンスターにEXP分配とレベルアップチェック
-    const expPerMonster = Math.floor(totalExp / allies.filter(a => a.hp > 0).length);
-    
-    allies.filter(a => a.hp > 0).forEach(ally => {
-      const fromLevel = ally.level;
-      let newExp = ally.exp + expPerMonster;
-      let newLevel = fromLevel;
-      
-      // レベルアップチェック
-      while (newExp >= ally.expNext) {
-        newExp -= ally.expNext;
-        newLevel++;
-        levelUps.push({
-          monsterId: ally.id,
-          monsterName: ally.name,
-          fromLevel: fromLevel,
-          toLevel: newLevel,
-        });
-      }
-      
-      // 仮のEXP更新（実際の適用は結果画面で）
-      ally.exp = newExp;
-      ally.level = newLevel;
-    });
-
-    // 報酬をセットして結果画面を表示
-    setBattleResult({
-      victory: true,
-      rewards: {
-        gold: totalGold,
-        exp: totalExp,
-        materials: drops,
-        levelUps,
-      },
-    });
-    setShowResult(true);
-  };
-
-  const [enemies, setEnemies] = useState<Enemy[]>(() => battleState.enemies.map((e) => ({ ...e })));
-  const [allies, setAllies] = useState<Monster[]>(() => partyMonsters.map((m) => ({ ...m })));
+  const [enemies, setEnemies] = useState<Enemy[]>(
+    () => battleState?.enemies.map((e) => ({ ...e })) ?? []
+  );
+  const [allies, setAllies] = useState<Monster[]>(
+    () => (battleState ? partyMonsters.map((m) => ({ ...m })) : [])
+  );
   const [activeAllyIdx, setActiveAllyIdx] = useState(0);
   const [pendingCmd, setPendingCmd] = useState<Command | null>(null);
   const [log, setLog] = useState<string[]>(["バトル開始！"]);
@@ -125,39 +80,73 @@ export default function BattlePage() {
   const [showResult, setShowResult] = useState(false);
   const [battleResult, setBattleResult] = useState<{
     victory: boolean;
-    rewards?: {
-      gold: number;
-      exp: number;
-      materials: Record<string, number>;
-      levelUps: Array<{
-        monsterId: string;
-        monsterName: string;
-        fromLevel: number;
-        toLevel: number;
-      }>;
-    };
-  }>({ victory: false });
+    endReason: BattleEndReason;
+    rewards?: BattleRewards;
+  }>({ victory: false, endReason: "defeat" });
 
-  // 戦闘開始時の敵報酬を保持
-  const [enemyRewards, setEnemyRewards] = useState<{ gold: number; exp: number }>({ gold: 0, exp: 0 });
+  // 戦闘終了シグナル: null = 戦闘中, それ以外 = 結果を処理待ち
+  const [battleEndSignal, setBattleEndSignal] = useState<BattleEndSignal | null>(null);
 
-  // 戦闘開始時に敵報酬を計算
+  // ── 戦闘終了シグナルを検知してモーダルを開く ─────────────────────────
+  // useEffect で処理することで、state が完全にコミットされた後に実行される
   useEffect(() => {
-    if (battleState) {
-      const totalGold = battleState.enemies.reduce((sum, e) => sum + e.reward.gold, 0);
-      const totalExp = battleState.enemies.reduce((sum, e) => sum + e.reward.exp, 0);
-      setEnemyRewards({ gold: totalGold, exp: totalExp });
-    }
-  }, [battleState]);
+    if (!battleEndSignal) return;
 
-  // 敗北判定と自動モーダル表示
-  useEffect(() => {
-    if (phase === "end" && allies.every((a) => a.hp <= 0)) {
-      // 敗北時は即座にモーダル表示
-      setBattleResult({ victory: false });
+    const { reason, finalAllies } = battleEndSignal;
+
+    if (reason !== "victory") {
+      setBattleResult({ victory: false, endReason: reason });
       setShowResult(true);
+      return;
     }
-  }, [phase, allies]);
+
+    const materials = processBattleDrops(battleState?.enemies ?? []);
+    const aliveAllies = finalAllies.filter((a) => a.hp > 0);
+    const expPerMonster = aliveAllies.length > 0
+      ? Math.floor(enemyTotalExp / aliveAllies.length)
+      : 0;
+
+    const levelUps: BattleRewards["levelUps"] = [];
+    const monsterExpUpdates = aliveAllies.map((ally) => {
+      let exp = ally.exp + expPerMonster;
+      let level = ally.level;
+
+      while (exp >= getExpToNextLevel(level)) {
+        exp -= getExpToNextLevel(level);
+        level++;
+      }
+
+      if (level > ally.level) {
+        levelUps.push({
+          monsterId: ally.id,
+          monsterName: ally.name,
+          fromLevel: ally.level,
+          toLevel: level,
+        });
+      }
+
+      return {
+        monsterId: ally.id,
+        expToAdd: expPerMonster,
+        finalExp: exp,
+        finalLevel: level,
+        finalExpNext: getExpToNextLevel(level),
+      };
+    });
+
+    setBattleResult({
+      victory: true,
+      endReason: "victory",
+      rewards: { gold: enemyTotalGold, exp: enemyTotalExp, materials, levelUps, monsterExpUpdates },
+    });
+    setShowResult(true);
+  }, [battleEndSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── 以下は hooks 終了後のロジック ──────────────────────────────────────
+  if (!battleState || partyMonsters.length === 0) {
+    dispatch({ type: "END_BATTLE" });
+    return null;
+  }
 
   const aliveEnemyIdxs = enemies.reduce<number[]>((acc, e, i) => {
     if (e.hp > 0) acc.push(i);
@@ -188,22 +177,23 @@ export default function BattlePage() {
   };
 
   const advanceTurn = (newEnemies: Enemy[], newAllies: Monster[], actionMsgs: string[], allyIdx: number) => {
-    // 敗北判定
+    // 敗北判定（プレイヤー行動後）
     if (newAllies.every((a) => a.hp <= 0)) {
-      setEnemies(newEnemies);
-      setAllies(newAllies);
       batchLog([...actionMsgs, "全員倒れてしまった..."]);
       setPhase("end");
+      setEnemies(newEnemies);
+      setAllies(newAllies);
+      setBattleEndSignal({ reason: "defeat", finalAllies: newAllies });
       return;
     }
 
+    // 勝利判定: シグナルをセットして useEffect に委譲する
     if (newEnemies.every((e) => e.hp <= 0)) {
-      setEnemies(newEnemies);
-      setAllies(newAllies);
       batchLog([...actionMsgs, "全員倒した！"]);
       setPhase("end");
-      // 状態更新後に勝利処理を呼び出し
-      setTimeout(() => handleEndBattle(true), 100);
+      setEnemies(newEnemies);
+      setAllies(newAllies);
+      setBattleEndSignal({ reason: "victory", finalAllies: newAllies });
       return;
     }
 
@@ -221,9 +211,11 @@ export default function BattlePage() {
       setAllies(updatedAllies);
       batchLog([...actionMsgs, ...eMsgs]);
 
+      // 敗北判定（敵行動後）
       if (updatedAllies.every((a) => a.hp <= 0)) {
         setLog((prev) => ["全員やられた…", ...prev].slice(0, 8));
         setPhase("end");
+        setBattleEndSignal({ reason: "defeat", finalAllies: updatedAllies });
         return;
       }
 
@@ -253,27 +245,35 @@ export default function BattlePage() {
       msgs.push(`${ally.name}は${skill}を使った！ ${target.name}に${dmg}ダメージ！`);
       if (target.hp <= 0) msgs.push(`${target.name}を倒した！`);
     } else if (cmd === "catch") {
-      const rate = target.catchRate * (1 - target.hp / target.maxHp) * 2;
+      // スカウト確率: 捕獲率 × (使用者ATK / (使用者ATK + 相手DEF)) × 2 (5%〜90% にクランプ)
+      const atkFactor = ally.atk / (ally.atk + target.def);
+      const rate = Math.min(0.9, Math.max(0.05, target.catchRate * atkFactor * 2));
+
       if (Math.random() < rate) {
-        msgs.push(`${target.name}を仲間にした！`);
-        target.hp = 0;
+        msgs.push(`${target.name}のスカウトに成功した！`);
+        batchLog(msgs);
         dispatch({
           type: "ADD_MONSTER",
           payload: {
             ...battleState.enemies[targetEnemyIdx]!,
             id: `mon-${Date.now()}`,
-            hp: 1,
+            hp: battleState.enemies[targetEnemyIdx]!.maxHp,
             isParty: false,
             personality: "普通",
             skills: [],
             equipped: { weapon: null, armor: null, accessory: null },
             exp: 0,
-            expNext: 50,
+            expNext: getExpToNextLevel(1),
           } as Monster,
         });
-        dispatch({ type: "NOTIFY", payload: { message: `🎉 ${target.name}が仲間になった！`, severity: "success" } });
+        // スカウト成功 → 他に敵がいても即戦闘終了
+        setPhase("end");
+        setEnemies(newEnemies);
+        setAllies(newAllies);
+        setBattleEndSignal({ reason: "scout", finalAllies: newAllies });
+        return;
       } else {
-        msgs.push(`${target.name}は逃げ出した！ 捕獲失敗…`);
+        msgs.push(`${target.name}のスカウト失敗…`);
       }
     }
 
@@ -283,7 +283,8 @@ export default function BattlePage() {
   const handleCommand = (cmd: Command) => {
     if (phase !== "command") return;
     if (cmd === "run") {
-      handleEndBattle();
+      setBattleEndSignal({ reason: "run", finalAllies: allies });
+      setPhase("end");
       return;
     }
     if (aliveEnemyIdxs.length === 1) {
@@ -320,72 +321,81 @@ export default function BattlePage() {
           ⚔ バトル
         </Typography>
 
-        {/* 左: 敵 ／ 右: 味方 */}
+        {/* 左: 敵 ／ 右: 味方（3件固定表示・超過分はスクロール） */}
+        {/* スクロール高さ = 3枚 × 味方カード高さ(90px) + gap(6px) × 2 = 282px */}
         <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
 
           {/* 敵 (左) */}
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>
-            <Typography variant="caption" color="error.main" textAlign="center" display="block">
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Typography variant="caption" color="error.main" textAlign="center" display="block"
+              sx={{ flexShrink: 0, mb: 0.75 }}>
               敵 {aliveEnemyIdxs.length}/{enemies.length}
             </Typography>
-            {enemies.map((enemy, i) => (
-              <Fade in={true} timeout={300} key={`${enemy.id}-${i}`}>
-                <Card sx={{
-                  bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
-                  border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
-                  opacity: enemy.hp <= 0 ? 0.35 : 1,
-                  transition: "opacity 0.3s",
-                }}>
-                  <CardContent sx={{ p: "6px 8px !important" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
-                      <SpriteImage sprite={enemy.sprite} size={36} alt={enemy.name} />
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
-                          {enemy.name}
-                        </Typography>
-                        <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{enemy.level}</Typography>
-                      </Box>
-                    </Box>
-                    <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
-                  </CardContent>
-                </Card>
-              </Fade>
-            ))}
-          </Box>
-
-          {/* 味方 (右) */}
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.75 }}>
-            <Typography variant="caption" color="success.main" textAlign="center" display="block">
-              味方 {allies.filter((a) => a.hp > 0).length}/{allies.length}
-            </Typography>
-            {allies.map((ally, i) => {
-              const isActive = i === activeAllyIdx && phase !== "end" && ally.hp > 0;
-              return (
-                <Fade in={true} timeout={300} key={ally.id} style={{ transitionDelay: `${i * 60}ms` }}>
+            <Box sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
+              {enemies.map((enemy, i) => (
+                <Fade in={true} timeout={300} key={`${enemy.id}-${i}`}>
                   <Card sx={{
-                    bgcolor: ally.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(76,175,80,0.1)",
-                    border: `1px solid ${isActive ? "#4caf50" : ally.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(76,175,80,0.3)"}`,
-                    opacity: ally.hp <= 0 ? 0.35 : 1,
-                    boxShadow: isActive ? "0 0 6px rgba(76,175,80,0.6)" : "none",
-                    transition: "all 0.3s",
+                    bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
+                    border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
+                    opacity: enemy.hp <= 0 ? 0.35 : 1,
+                    transition: "opacity 0.3s",
+                    flexShrink: 0,
                   }}>
                     <CardContent sx={{ p: "6px 8px !important" }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
-                        <SpriteImage sprite={ally.sprite} size={36} alt={ally.name} />
+                        <SpriteImage sprite={enemy.sprite} size={36} alt={enemy.name} />
                         <Box sx={{ minWidth: 0, flex: 1 }}>
                           <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
-                            {ally.name}
+                            {enemy.name}
                           </Typography>
-                          <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{ally.level}</Typography>
+                          <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{enemy.level}</Typography>
                         </Box>
                       </Box>
-                      <StatBar label="HP" value={ally.hp} max={ally.maxHp} color="success" />
-                      <StatBar label="MP" value={ally.mp} max={ally.maxMp} color="primary" />
+                      <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
                     </CardContent>
                   </Card>
                 </Fade>
-              );
-            })}
+              ))}
+            </Box>
+          </Box>
+
+          {/* 味方 (右) */}
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Typography variant="caption" color="success.main" textAlign="center" display="block"
+              sx={{ flexShrink: 0, mb: 0.75 }}>
+              味方 {allies.filter((a) => a.hp > 0).length}/{allies.length}
+            </Typography>
+            <Box sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
+              {allies.map((ally, i) => {
+                const isActive = i === activeAllyIdx && phase !== "end" && ally.hp > 0;
+                return (
+                  <Fade in={true} timeout={300} key={ally.id} style={{ transitionDelay: `${i * 60}ms` }}>
+                    <Card sx={{
+                      bgcolor: ally.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(76,175,80,0.1)",
+                      border: `1px solid ${isActive ? "#4caf50" : ally.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(76,175,80,0.3)"}`,
+                      opacity: ally.hp <= 0 ? 0.35 : 1,
+                      boxShadow: isActive ? "0 0 6px rgba(76,175,80,0.6)" : "none",
+                      transition: "all 0.3s",
+                      flexShrink: 0,
+                    }}>
+                      <CardContent sx={{ p: "6px 8px !important" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
+                          <SpriteImage sprite={ally.sprite} size={36} alt={ally.name} />
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                              {ally.name}
+                            </Typography>
+                            <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{ally.level}</Typography>
+                          </Box>
+                        </Box>
+                        <StatBar label="HP" value={ally.hp} max={ally.maxHp} color="success" />
+                        <StatBar label="MP" value={ally.mp} max={ally.maxMp} color="primary" />
+                      </CardContent>
+                    </Card>
+                  </Fade>
+                );
+              })}
+            </Box>
           </Box>
         </Box>
 
@@ -406,23 +416,31 @@ export default function BattlePage() {
           </CardContent>
         </Card>
 
-        {/* コマンド / ターゲット選択 / 終了 */}
+        {/* コマンド / ターゲット選択 */}
         <Box sx={{ flexShrink: 0 }}>
-          {phase === "end" && allies.some(a => a.hp > 0) ? (
-            <Button variant="contained" size="large" fullWidth onClick={() => handleEndBattle(true)}>
-              フィールドへ戻る
-            </Button>
-          ) : phase === "targeting" ? (
+          {phase === "targeting" ? (
             <>
               <Typography variant="caption" color="warning.main" sx={{ mb: 0.5, display: "block" }}>
                 ターゲットを選択
               </Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: aliveEnemyIdxs.length === 1 ? "1fr" : "1fr 1fr", gap: 1 }}>
-                {aliveEnemyIdxs.map((i) => (
-                  <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)} key={i}>
-                    {enemies[i]!.sprite} {enemies[i]!.name}
-                  </Button>
-                ))}
+                {aliveEnemyIdxs.map((i) => {
+                  const enemy = enemies[i]!;
+                  const scoutRate = pendingCmd === "catch" && activeAlly
+                    ? Math.min(0.9, Math.max(0.05, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2))
+                    : null;
+                  return (
+                    <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)} key={i}
+                      sx={{ flexDirection: "column", lineHeight: 1.3, py: 0.75 }}>
+                      <span>{enemy.sprite} {enemy.name}</span>
+                      {scoutRate !== null && (
+                        <Typography component="span" sx={{ fontSize: 10, color: "secondary.main", fontWeight: 700 }}>
+                          スカウト {Math.round(scoutRate * 100)}%
+                        </Typography>
+                      )}
+                    </Button>
+                  );
+                })}
                 <Button variant="text" color="inherit" fullWidth size="small"
                   onClick={() => { setPendingCmd(null); setPhase("command"); }}>
                   戻る
@@ -454,16 +472,19 @@ export default function BattlePage() {
         </Box>
 
       </Box>
-
       </Fade>
 
       {/* Battle End Modal */}
       <BattleEndModal
         open={showResult}
         victory={battleResult.victory}
+        endReason={battleResult.endReason}
         rewards={battleResult.rewards}
         onClose={() => {
           setShowResult(false);
+          if (battleResult.victory && battleResult.rewards) {
+            dispatch({ type: "APPLY_BATTLE_REWARDS", payload: battleResult.rewards });
+          }
           dispatch({ type: "END_BATTLE" });
         }}
       />

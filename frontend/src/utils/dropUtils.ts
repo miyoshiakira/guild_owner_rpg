@@ -1,31 +1,31 @@
 import type { DropEntry } from "../types/game";
-import { ENEMY_MASTER } from "../data/masters/enemyMaster";
 
-export function calculateDrops(enemyId: string): Record<string, number> {
-  const enemy = ENEMY_MASTER.find(e => e.id === enemyId);
-  if (!enemy || !enemy.drops) return {};
-
-  const drops: Record<string, number> = {};
-
-  enemy.drops.forEach((drop: DropEntry) => {
+/**
+ * 敵1体分のドロップを抽選して返す
+ */
+function rollDrops(drops: DropEntry[]): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const drop of drops) {
     if (Math.random() < drop.rate) {
-      const quantity = Math.floor(Math.random() * (drop.maxQty - drop.minQty + 1)) + drop.minQty;
-      drops[drop.materialId] = (drops[drop.materialId] || 0) + quantity;
+      const qty = Math.floor(Math.random() * (drop.maxQty - drop.minQty + 1)) + drop.minQty;
+      result[drop.materialId] = (result[drop.materialId] ?? 0) + qty;
     }
-  });
-
-  return drops;
+  }
+  return result;
 }
 
-export function processBattleDrops(enemyIds: string[]): Record<string, number> {
-  const totalDrops: Record<string, number> = {};
-
-  enemyIds.forEach(enemyId => {
-    const drops = calculateDrops(enemyId);
-    Object.entries(drops).forEach(([materialId, quantity]) => {
-      totalDrops[materialId] = (totalDrops[materialId] || 0) + quantity;
-    });
-  });
-
-  return totalDrops;
+/**
+ * 戦闘で倒した敵リストのドロップをまとめて抽選して返す
+ * 敵オブジェクトの drops フィールドを直接参照する
+ */
+export function processBattleDrops(enemies: { drops?: DropEntry[] }[]): Record<string, number> {
+  const total: Record<string, number> = {};
+  for (const enemy of enemies) {
+    if (!enemy.drops) continue;
+    const dropped = rollDrops(enemy.drops);
+    for (const [materialId, qty] of Object.entries(dropped)) {
+      total[materialId] = (total[materialId] ?? 0) + qty;
+    }
+  }
+  return total;
 }

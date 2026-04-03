@@ -10,77 +10,56 @@ import {
   Modal,
   Backdrop,
 } from "@mui/material";
-import { useGame } from "../store/gameStore";
+import type { BattleRewards } from "../types/game";
 import { MATERIAL_MAP } from "../data/masters/materialMaster";
+
+type BattleEndReason = "victory" | "defeat" | "run" | "scout";
 
 interface BattleEndModalProps {
   open: boolean;
   victory: boolean;
-  rewards?: {
-    gold: number;
-    exp: number;
-    materials: Record<string, number>;
-    levelUps: Array<{
-      monsterId: string;
-      monsterName: string;
-      fromLevel: number;
-      toLevel: number;
-    }>;
-  };
+  endReason: BattleEndReason;
+  rewards?: BattleRewards;
   onClose: () => void;
 }
 
-export default function BattleEndModal({ open, victory, rewards, onClose }: BattleEndModalProps) {
-  const { dispatch } = useGame();
+const TITLE: Record<BattleEndReason, string> = {
+  victory: "戦闘勝利！",
+  defeat:  "全滅・・・",
+  run:     "逃げ出した...",
+  scout:   "スカウト成功！",
+};
+
+const MESSAGE: Record<Exclude<BattleEndReason, "victory">, string> = {
+  defeat: "力及ばずでした...また挑戦しましょう！",
+  run:    "今回は退散！また挑戦しましょう！",
+  scout:  "仲間になった！ギルドで確認してみよう！",
+};
+
+const TITLE_COLOR: Record<BattleEndReason, string> = {
+  victory: "primary.main",
+  defeat:  "error.main",
+  run:     "text.secondary",
+  scout:   "success.main",
+};
+
+export default function BattleEndModal({ open, victory, endReason, rewards, onClose }: BattleEndModalProps) {
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      // Reset animation states when closed
       setShowContent(false);
       return;
     }
-
-    // Show content (delay 500ms)
-    const timer = window.setTimeout(() => {
-      setShowContent(true);
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-    };
+    const timer = window.setTimeout(() => setShowContent(true), 500);
+    return () => clearTimeout(timer);
   }, [open]);
-
-  const handleClose = () => {
-    if (victory && rewards) {
-      // Apply rewards to game state
-      dispatch({ type: "UPDATE_PLAYER", payload: { 
-        gold: rewards.gold,
-        exp: rewards.exp 
-      }});
-      
-      dispatch({ type: "ADD_MATERIALS", payload: rewards.materials });
-
-      // Apply level ups
-      rewards.levelUps.forEach(levelUp => {
-        dispatch({ type: "LEVEL_UP_MONSTER", payload: { monsterId: levelUp.monsterId } });
-      });
-    }
-
-    onClose();
-  };
 
   return (
     <Modal
       open={open}
-      onClose={handleClose}
-      closeAfterTransition
       slots={{ backdrop: Backdrop }}
-      slotProps={{
-        backdrop: {
-          timeout: 500,
-        },
-      }}
+      slotProps={{ backdrop: { timeout: 500 } }}
     >
       <Fade in={open}>
         <Box sx={{
@@ -96,59 +75,45 @@ export default function BattleEndModal({ open, victory, rewards, onClose }: Batt
           boxShadow: 24,
           p: 4,
         }}>
-          <Typography 
-            variant="h4" 
-            textAlign="center" 
-            color={victory ? "primary" : "error"} 
+          <Typography
+            variant="h4"
+            textAlign="center"
+            sx={{ color: TITLE_COLOR[endReason] }}
             gutterBottom
           >
-            {victory ? "戦闘勝利！" : "全滅・・・"}
+            {TITLE[endReason]}
           </Typography>
 
-          {victory && rewards && (
-            <Fade in={showContent} timeout={800}>
-              <Box>
-                {/* Gold */}
-                <Fade in={showContent} timeout={800}>
+          <Fade in={showContent} timeout={800}>
+            <Box>
+              {victory && rewards ? (
+                <>
+                  {/* Gold */}
                   <Box sx={{ mb: 3 }}>
                     <Card sx={{ bgcolor: "warning.main", color: "warning.contrastText" }}>
                       <CardContent sx={{ textAlign: "center", py: 2 }}>
-                        <Typography variant="h6" gutterBottom>
-                          💰 所持金
-                        </Typography>
-                        <Typography variant="h4">
-                          +{rewards.gold} G
-                        </Typography>
+                        <Typography variant="h6" gutterBottom>💰 所持金</Typography>
+                        <Typography variant="h4">+{rewards.gold} G</Typography>
                       </CardContent>
                     </Card>
                   </Box>
-                </Fade>
 
-                {/* EXP */}
-                <Fade in={showContent} timeout={800}>
+                  {/* EXP */}
                   <Box sx={{ mb: 3 }}>
                     <Card sx={{ bgcolor: "secondary.main", color: "secondary.contrastText" }}>
                       <CardContent sx={{ textAlign: "center", py: 2 }}>
-                        <Typography variant="h6" gutterBottom>
-                          ⭐ 経験値
-                        </Typography>
-                        <Typography variant="h4">
-                          +{rewards.exp} EXP
-                        </Typography>
+                        <Typography variant="h6" gutterBottom>⭐ 経験値</Typography>
+                        <Typography variant="h4">+{rewards.exp} EXP</Typography>
                       </CardContent>
                     </Card>
                   </Box>
-                </Fade>
 
-                {/* Materials */}
-                {Object.keys(rewards.materials).length > 0 && (
-                  <Fade in={showContent} timeout={800}>
+                  {/* Materials */}
+                  {Object.keys(rewards.materials).length > 0 && (
                     <Box sx={{ mb: 3 }}>
                       <Card sx={{ bgcolor: "success.main", color: "success.contrastText" }}>
                         <CardContent sx={{ textAlign: "center", py: 2 }}>
-                          <Typography variant="h6" gutterBottom>
-                            🎁 獲得素材
-                          </Typography>
+                          <Typography variant="h6" gutterBottom>🎁 獲得素材</Typography>
                           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
                             {Object.entries(rewards.materials).map(([materialId, qty]) => {
                               const material = MATERIAL_MAP[materialId];
@@ -171,18 +136,14 @@ export default function BattleEndModal({ open, victory, rewards, onClose }: Batt
                         </CardContent>
                       </Card>
                     </Box>
-                  </Fade>
-                )}
+                  )}
 
-                {/* Level Ups */}
-                {rewards.levelUps.length > 0 && (
-                  <Fade in={showContent} timeout={800}>
+                  {/* Level Ups */}
+                  {rewards.levelUps.length > 0 && (
                     <Box sx={{ mb: 3 }}>
                       <Card sx={{ bgcolor: "primary.main", color: "primary.contrastText" }}>
                         <CardContent sx={{ textAlign: "center", py: 2 }}>
-                          <Typography variant="h6" gutterBottom>
-                            🎉 レベルアップ！
-                          </Typography>
+                          <Typography variant="h6" gutterBottom>🎉 レベルアップ！</Typography>
                           {rewards.levelUps.map((levelUp) => (
                             <Box key={levelUp.monsterId} sx={{ mb: 1 }}>
                               <Typography variant="body1">
@@ -193,56 +154,41 @@ export default function BattleEndModal({ open, victory, rewards, onClose }: Batt
                         </CardContent>
                       </Card>
                     </Box>
-                  </Fade>
-                )}
-
-                {/* Progress indicator */}
-                <Box sx={{ mt: 3, textAlign: "center" }}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={showContent ? 100 : 0} 
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                    {showContent ? "結果確認完了" : "結果確認中..."}
+                  )}
+                </>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                    {MESSAGE[endReason as Exclude<BattleEndReason, "victory">]}
                   </Typography>
                 </Box>
-              </Box>
-            </Fade>
-          )}
+              )}
 
-          {!victory && (
-            <Fade in={showContent} timeout={800}>
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                  力及ばずでした...また挑戦しましょう！
+              {/* Progress indicator */}
+              <Box sx={{ mt: 3, textAlign: "center" }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={showContent ? 100 : 0}
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                  {showContent ? "確認完了" : "確認中..."}
                 </Typography>
-                
-                <Box sx={{ mt: 3, textAlign: "center" }}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={showContent ? 100 : 0} 
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                    {showContent ? "確認完了" : "確認中..."}
-                  </Typography>
-                </Box>
               </Box>
-            </Fade>
-          )}
+            </Box>
+          </Fade>
 
           {/* Action Button */}
           <Box sx={{ mt: 4, textAlign: "center" }}>
-            <Button 
-              onClick={handleClose} 
-              variant="contained" 
+            <Button
+              onClick={onClose}
+              variant="contained"
               size="large"
               disabled={!showContent}
-              color={victory ? "primary" : "error"}
+              color={victory ? "primary" : endReason === "scout" ? "success" : "error"}
               sx={{ minWidth: 200 }}
             >
-              {victory ? "フィールドへ戻る" : "ギルドへ戻る"}
+              フィールドへ戻る
             </Button>
           </Box>
         </Box>

@@ -265,6 +265,10 @@ const MonsterDetail = memo(function MonsterDetail({
     return id ? allEquipment.find((e) => e.id === id) : undefined;
   };
 
+  // デバッグ用：モンスターデータを確認
+  console.log("Monster data:", monster);
+  console.log("Monster exp:", monster.exp, "expNext:", monster.expNext);
+
   const statBonus = (key: "atkBonus" | "defBonus" | "spdBonus") =>
     SLOT_ORDER.reduce((s, sl) => s + (getEquipped(sl)?.[key] ?? 0), 0);
 
@@ -329,12 +333,12 @@ const MonsterDetail = memo(function MonsterDetail({
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                   <Typography variant="caption" color="text.secondary">経験値</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {monster.exp} / {monster.expNext}
+                    {monster.exp || 0} / {monster.expNext || 50}
                   </Typography>
                 </Box>
                 <LinearProgress
                   variant="determinate"
-                  value={(monster.exp / monster.expNext) * 100}
+                  value={((monster.exp || 0) / (monster.expNext || 50)) * 100}
                   sx={{
                     height: 8,
                     borderRadius: 4,
@@ -345,6 +349,9 @@ const MonsterDetail = memo(function MonsterDetail({
                     },
                   }}
                 />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                  進捗: {Math.round(((monster.exp || 0) / (monster.expNext || 50)) * 100)}%
+                </Typography>
               </Box>
 
               <Typography variant="caption" color="text.secondary">

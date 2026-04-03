@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode, type Dispatch } from "react";
-import { saveGameData } from "../db/saveService";
+import { saveGameData, loadGameData, hasSaveData } from "../db/saveService";
 import { PLAYER, MONSTERS, ITEMS, EQUIPMENT } from "../data/testData";
+import { getExpToNextLevel } from "../data/expTable";
 import type { GameState, GameAction, EquipSlot } from "../types/game";
 import type { CraftRecipe } from "../types/masters";
 
@@ -177,49 +178,58 @@ function reducer(state: GameState, action: GameAction): GameState {
       }
     }
 
-    case "ADD_MONSTER_EXP": {
-      const { monsterId, exp } = action.payload;
+    case "APPLY_BATTLE_REWARDS": {
+      const { gold, materials, monsterExpUpdates } = action.payload;
+
+      const newMaterials = { ...state.materials };
+      Object.entries(materials).forEach(([materialId, qty]) => {
+        newMaterials[materialId] = (newMaterials[materialId] || 0) + qty;
+        if (newMaterials[materialId] === 0) delete newMaterials[materialId];
+      });
+
+      const newMonsters = state.monsters.map((monster) => {
+        const update = monsterExpUpdates.find((u) => u.monsterId === monster.id);
+        if (!update) return monster;
+
+        const levelDiff = update.finalLevel - monster.level;
+        if (levelDiff === 0) return { ...monster, exp: update.finalExp };
+
+        let hpIncrease = 0, mpIncrease = 0, atkIncrease = 0, defIncrease = 0, spdIncrease = 0;
+        for (let i = 0; i < levelDiff; i++) {
+          hpIncrease  += Math.floor(Math.random() * 5) + 3; // 3-7
+          mpIncrease  += Math.floor(Math.random() * 3) + 1; // 1-3
+          atkIncrease += Math.floor(Math.random() * 3) + 1; // 1-3
+          defIncrease += Math.floor(Math.random() * 3) + 1; // 1-3
+          spdIncrease += Math.floor(Math.random() * 2) + 1; // 1-2
+        }
+
+        return {
+          ...monster,
+          exp: update.finalExp,
+          level: update.finalLevel,
+          expNext: getExpToNextLevel(update.finalLevel),
+          maxHp: monster.maxHp + hpIncrease,
+          hp: monster.hp + hpIncrease,
+          maxMp: monster.maxMp + mpIncrease,
+          mp: monster.mp + mpIncrease,
+          atk: monster.atk + atkIncrease,
+          def: monster.def + defIncrease,
+          spd: monster.spd + spdIncrease,
+        };
+      });
+
       return {
         ...state,
-        monsters: state.monsters.map((monster) =>
-          monster.id === monsterId
-            ? { ...monster, exp: monster.exp + exp }
-            : monster
-        ),
+        player: { ...state.player, gold: state.player.gold + gold },
+        materials: newMaterials,
+        monsters: newMonsters,
       };
     }
 
-    case "LEVEL_UP_MONSTER": {
-      const { monsterId } = action.payload;
+    case "LOAD_MONSTERS": {
       return {
         ...state,
-        monsters: state.monsters.map((monster) => {
-          if (monster.id !== monsterId) return monster;
-
-          const newLevel = monster.level + 1;
-          const newExpNext = Math.floor(monster.expNext * 1.5); // 次のレベルに必要なEXPを1.5倍に
-
-          // ステータス上昇（レベルアップ時）
-          const hpIncrease = Math.floor(Math.random() * 5) + 3; // 3-7
-          const mpIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
-          const atkIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
-          const defIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
-          const spdIncrease = Math.floor(Math.random() * 2) + 1; // 1-2
-
-          return {
-            ...monster,
-            level: newLevel,
-            exp: monster.exp - monster.expNext, // 余りEXPを次のレベルに繰越
-            expNext: newExpNext,
-            maxHp: monster.maxHp + hpIncrease,
-            hp: monster.maxHp + hpIncrease, // レベルアップ時は全回復
-            maxMp: monster.maxMp + mpIncrease,
-            mp: monster.maxMp + mpIncrease, // レベルアップ時は全回復
-            atk: monster.atk + atkIncrease,
-            def: monster.def + defIncrease,
-            spd: monster.spd + spdIncrease,
-          };
-        }),
+        monsters: action.payload,
       };
     }
 
@@ -237,6 +247,32 @@ const GameContext = createContext<GameContextValue | null>(null);
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // アプリ起動時にセーブデータを読み込む
+  useEffect(() => {
+    const initializeGame = async () => {
+      try {
+        const hasData = await hasSaveData();
+        if (hasData) {
+          const savedData = await loadGameData();
+          console.log("Loaded save data:", savedData);
+          
+          // 読み込んだデータで状態を更新
+          if (savedData.player) {
+            dispatch({ type: "UPDATE_PLAYER", payload: savedData.player });
+          }
+          if (savedData.monsters && savedData.monsters.length > 0) {
+            // セーブデータからモンスターを復元
+            dispatch({ type: "LOAD_MONSTERS", payload: savedData.monsters });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load save data:", error);
+      }
+    };
+
+    initializeGame();
+  }, []);
 
   // ログイン後（scene !== "login"）の状態変化を検知してデバウンスセーブ
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

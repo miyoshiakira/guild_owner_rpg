@@ -94,6 +94,25 @@ export interface Notification {
   severity: NotificationSeverity;
 }
 
+export interface BattleRewards {
+  gold: number;
+  exp: number;
+  materials: Record<string, number>;
+  levelUps: Array<{
+    monsterId: string;
+    monsterName: string;
+    fromLevel: number;
+    toLevel: number;
+  }>;
+  monsterExpUpdates: Array<{
+    monsterId: string;
+    expToAdd: number;
+    finalExp: number;
+    finalLevel: number;
+    finalExpNext: number;
+  }>;
+}
+
 export interface BattleState {
   enemies: Enemy[];
   turn: number;
@@ -124,5 +143,5 @@ export type GameAction =
   | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
   | { type: "ADD_MATERIALS"; payload: Record<string, number> }
   | { type: "CRAFT"; payload: import("./masters").CraftRecipe }
-  | { type: "ADD_MONSTER_EXP"; payload: { monsterId: string; exp: number } }
-  | { type: "LEVEL_UP_MONSTER"; payload: { monsterId: string } };
+  | { type: "APPLY_BATTLE_REWARDS"; payload: BattleRewards }
+  | { type: "LOAD_MONSTERS"; payload: Monster[] };
