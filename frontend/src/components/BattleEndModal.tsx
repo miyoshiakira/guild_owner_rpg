@@ -69,117 +69,123 @@ export default function BattleEndModal({ open, victory, endReason, rewards, onCl
           transform: 'translate(-50%, -50%)',
           width: { xs: '90%', sm: 500 },
           maxHeight: '90vh',
-          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
           bgcolor: 'background.paper',
           borderRadius: 2,
           boxShadow: 24,
-          p: 4,
+          overflow: 'hidden',
         }}>
-          <Typography
-            variant="h4"
-            textAlign="center"
-            sx={{ color: TITLE_COLOR[endReason] }}
-            gutterBottom
-          >
-            {TITLE[endReason]}
-          </Typography>
+          {/* タイトル (固定) */}
+          <Box sx={{ px: 4, pt: 4, pb: 1, flexShrink: 0 }}>
+            <Typography
+              variant="h4"
+              textAlign="center"
+              sx={{ color: TITLE_COLOR[endReason] }}
+            >
+              {TITLE[endReason]}
+            </Typography>
+          </Box>
 
-          <Fade in={showContent} timeout={800}>
-            <Box>
-              {victory && rewards ? (
-                <>
-                  {/* Gold */}
-                  <Box sx={{ mb: 3 }}>
-                    <Card sx={{ bgcolor: "warning.main", color: "warning.contrastText" }}>
-                      <CardContent sx={{ textAlign: "center", py: 2 }}>
-                        <Typography variant="h6" gutterBottom>💰 所持金</Typography>
-                        <Typography variant="h4">+{rewards.gold} G</Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-
-                  {/* EXP */}
-                  <Box sx={{ mb: 3 }}>
-                    <Card sx={{ bgcolor: "secondary.main", color: "secondary.contrastText" }}>
-                      <CardContent sx={{ textAlign: "center", py: 2 }}>
-                        <Typography variant="h6" gutterBottom>⭐ 経験値</Typography>
-                        <Typography variant="h4">+{rewards.exp} EXP</Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-
-                  {/* Materials */}
-                  {Object.keys(rewards.materials).length > 0 && (
-                    <Box sx={{ mb: 3 }}>
-                      <Card sx={{ bgcolor: "success.main", color: "success.contrastText" }}>
+          {/* スクロール可能なコンテンツ */}
+          <Box sx={{ flex: 1, overflowY: 'auto', px: 4, py: 2 }}>
+            <Fade in={showContent} timeout={800}>
+              <Box>
+                {victory && rewards ? (
+                  <>
+                    {/* Gold */}
+                    <Box sx={{ mb: 2 }}>
+                      <Card sx={{ bgcolor: "warning.main", color: "warning.contrastText" }}>
                         <CardContent sx={{ textAlign: "center", py: 2 }}>
-                          <Typography variant="h6" gutterBottom>🎁 獲得素材</Typography>
-                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
-                            {Object.entries(rewards.materials).map(([materialId, qty]) => {
-                              const material = MATERIAL_MAP[materialId];
-                              return (
-                                <Box
-                                  key={materialId}
-                                  sx={{
-                                    px: 1.5,
-                                    py: 0.5,
-                                    bgcolor: "rgba(255,255,255,0.2)",
-                                    borderRadius: 1,
-                                    fontSize: "0.875rem",
-                                  }}
-                                >
-                                  {material.emoji} {material.name} x{qty}
-                                </Box>
-                              );
-                            })}
-                          </Box>
+                          <Typography variant="h6" gutterBottom>💰 所持金</Typography>
+                          <Typography variant="h4">+{rewards.gold} G</Typography>
                         </CardContent>
                       </Card>
                     </Box>
-                  )}
 
-                  {/* Level Ups */}
-                  {rewards.levelUps.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
-                      <Card sx={{ bgcolor: "primary.main", color: "primary.contrastText" }}>
+                    {/* EXP */}
+                    <Box sx={{ mb: 2 }}>
+                      <Card sx={{ bgcolor: "secondary.main", color: "secondary.contrastText" }}>
                         <CardContent sx={{ textAlign: "center", py: 2 }}>
-                          <Typography variant="h6" gutterBottom>🎉 レベルアップ！</Typography>
-                          {rewards.levelUps.map((levelUp) => (
-                            <Box key={levelUp.monsterId} sx={{ mb: 1 }}>
-                              <Typography variant="body1">
-                                {levelUp.monsterName}: Lv.{levelUp.fromLevel} → Lv.{levelUp.toLevel}
-                              </Typography>
+                          <Typography variant="h6" gutterBottom>⭐ 経験値</Typography>
+                          <Typography variant="h4">+{rewards.exp} EXP</Typography>
+                        </CardContent>
+                      </Card>
+                    </Box>
+
+                    {/* Materials */}
+                    {Object.keys(rewards.materials).length > 0 && (
+                      <Box sx={{ mb: 2 }}>
+                        <Card sx={{ bgcolor: "success.main", color: "success.contrastText" }}>
+                          <CardContent sx={{ textAlign: "center", py: 2 }}>
+                            <Typography variant="h6" gutterBottom>🎁 獲得素材</Typography>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
+                              {Object.entries(rewards.materials).map(([materialId, qty]) => {
+                                const material = MATERIAL_MAP[materialId];
+                                return (
+                                  <Box
+                                    key={materialId}
+                                    sx={{
+                                      px: 1.5,
+                                      py: 0.5,
+                                      bgcolor: "rgba(255,255,255,0.2)",
+                                      borderRadius: 1,
+                                      fontSize: "0.875rem",
+                                    }}
+                                  >
+                                    {material.emoji} {material.name} x{qty}
+                                  </Box>
+                                );
+                              })}
                             </Box>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    </Box>
-                  )}
-                </>
-              ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                    {MESSAGE[endReason as Exclude<BattleEndReason, "victory">]}
+                          </CardContent>
+                        </Card>
+                      </Box>
+                    )}
+
+                    {/* Level Ups */}
+                    {rewards.levelUps.length > 0 && (
+                      <Box sx={{ mb: 2 }}>
+                        <Card sx={{ bgcolor: "primary.main", color: "primary.contrastText" }}>
+                          <CardContent sx={{ textAlign: "center", py: 2 }}>
+                            <Typography variant="h6" gutterBottom>🎉 レベルアップ！</Typography>
+                            {rewards.levelUps.map((levelUp) => (
+                              <Box key={levelUp.monsterId} sx={{ mb: 1 }}>
+                                <Typography variant="body1">
+                                  {levelUp.monsterName}: Lv.{levelUp.fromLevel} → Lv.{levelUp.toLevel}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </Box>
+                    )}
+                  </>
+                ) : (
+                  <Box sx={{ textAlign: "center", py: 4 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      {MESSAGE[endReason as Exclude<BattleEndReason, "victory">]}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Progress indicator */}
+                <Box sx={{ mt: 2, textAlign: "center" }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={showContent ? 100 : 0}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                    {showContent ? "確認完了" : "確認中..."}
                   </Typography>
                 </Box>
-              )}
-
-              {/* Progress indicator */}
-              <Box sx={{ mt: 3, textAlign: "center" }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={showContent ? 100 : 0}
-                  sx={{ height: 8, borderRadius: 4 }}
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                  {showContent ? "確認完了" : "確認中..."}
-                </Typography>
               </Box>
-            </Box>
-          </Fade>
+            </Fade>
+          </Box>
 
-          {/* Action Button */}
-          <Box sx={{ mt: 4, textAlign: "center" }}>
+          {/* 閉じるボタン (固定) */}
+          <Box sx={{ px: 4, py: 3, flexShrink: 0, borderTop: "1px solid", borderColor: "divider", textAlign: "center" }}>
             <Button
               onClick={onClose}
               variant="contained"

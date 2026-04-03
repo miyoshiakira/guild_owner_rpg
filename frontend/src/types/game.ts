@@ -78,6 +78,8 @@ export interface Enemy {
   reward: { exp: number; gold: number };
   catchRate: number;
   drops?: DropEntry[];
+  skills: string[];
+  personality: string;
 }
 
 export interface Item {
@@ -144,4 +146,6 @@ export type GameAction =
   | { type: "ADD_MATERIALS"; payload: Record<string, number> }
   | { type: "CRAFT"; payload: import("./masters").CraftRecipe }
   | { type: "APPLY_BATTLE_REWARDS"; payload: BattleRewards }
-  | { type: "LOAD_MONSTERS"; payload: Monster[] };
+  | { type: "LOAD_MONSTERS"; payload: Monster[] }
+  | { type: "RESET_GAME" }
+  | { type: "RENAME_MONSTER"; payload: { monsterId: string; name: string } };

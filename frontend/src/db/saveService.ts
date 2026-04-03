@@ -12,6 +12,7 @@ export interface SavedGameData {
   monsters: Monster[];
   equipment: Equipment[];
   items: Item[];
+  materials: Record<string, number>;
   playerPos: PlayerPos;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from "react";
+import React, { useState, useCallback, memo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,9 +14,13 @@ import {
 } from "@dnd-kit/core";
 import {
   Box, Grid, Card, CardContent, Typography, Chip,
-  Divider, IconButton, Tooltip, Checkbox, LinearProgress,
+  IconButton, Tooltip, Checkbox, LinearProgress,
+  Modal, Backdrop, Fade,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
 import { useGame } from "../store/gameStore";
 import type { Equipment, EquipSlot, Monster } from "../types/game";
 import { SpriteImage } from "../components/SpriteImage";
@@ -247,146 +251,302 @@ const MonsterCell = memo(function MonsterCell({
 });
 
 // ===== 詳細画面 =====
+const STAT_ROWS = [
+  { icon: "❤️", label: "HP",  baseKey: "maxHp" as const,  bonusKey: null },
+  { icon: "💙", label: "MP",  baseKey: "maxMp" as const,  bonusKey: null },
+  { icon: "⚔️", label: "ATK", baseKey: "atk"   as const,  bonusKey: "atkBonus" as const },
+  { icon: "🛡️", label: "DEF", baseKey: "def"   as const,  bonusKey: "defBonus" as const },
+  { icon: "💨", label: "SPD", baseKey: "spd"   as const,  bonusKey: "spdBonus" as const },
+] as const;
+
 const MonsterDetail = memo(function MonsterDetail({
   monster,
   allEquipment,
   storageItems,
   onBack,
   onToggleParty,
+  onRename,
 }: {
   monster: Monster;
   allEquipment: Equipment[];
   storageItems: Equipment[];
   onBack: () => void;
   onToggleParty: (isParty: boolean) => void;
+  onRename: (name: string) => void;
 }) {
+  const [portraitOpen, setPortraitOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+
   const getEquipped = (slot: EquipSlot) => {
     const id = monster.equipped[slot];
     return id ? allEquipment.find((e) => e.id === id) : undefined;
   };
 
-  // デバッグ用：モンスターデータを確認
-  console.log("Monster data:", monster);
-  console.log("Monster exp:", monster.exp, "expNext:", monster.expNext);
-
-  const statBonus = (key: "atkBonus" | "defBonus" | "spdBonus") =>
+  const bonus = (key: "atkBonus" | "defBonus" | "spdBonus") =>
     SLOT_ORDER.reduce((s, sl) => s + (getEquipped(sl)?.[key] ?? 0), 0);
 
-  const stats = [
-    { label: "ATK", base: monster.atk, bonus: statBonus("atkBonus") },
-    { label: "DEF", base: monster.def, bonus: statBonus("defBonus") },
-    { label: "SPD", base: monster.spd, bonus: statBonus("spdBonus") },
-  ];
+  const expPct = Math.min(100, Math.round((monster.exp / monster.expNext) * 100));
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <IconButton size="small" onClick={onBack} sx={{ mr: 0.5 }}>
-          <ArrowBackIcon fontSize="small" />
-        </IconButton>
-        <SpriteImage sprite={monster.sprite} size={40} alt={monster.name} />
-        <Box>
-          <Typography variant="h6" sx={{ lineHeight: 1.2 }}>{monster.name}</Typography>
-          <Box sx={{ display: "flex", gap: 0.5, mt: 0.25 }}>
+
+      {/* ── ヘッダー: 名前(左) ＋ 正方形スプライト(右) ── */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}>
+            <IconButton size="small" onClick={onBack}>
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="h6" fontWeight={700} noWrap sx={{ flex: 1, minWidth: 0 }}>
+              {monster.name}
+            </Typography>
+            <Tooltip title="名前を変更" placement="top" arrow>
+              <IconButton
+                size="small"
+                onClick={() => { setRenameValue(monster.name); setRenameOpen(true); }}
+                sx={{ color: "text.secondary", "&:hover": { color: "primary.main" } }}
+              >
+                <EditIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", pl: 0.5 }}>
             <Chip label={monster.type} size="small"
-              sx={{ bgcolor: TYPE_COLORS[monster.type], color: "#fff", height: 18, fontSize: 11 }} />
-            <Chip label={`Lv.${monster.level}`} size="small" variant="outlined" sx={{ height: 18, fontSize: 11 }} />
+              sx={{ bgcolor: TYPE_COLORS[monster.type], color: "#fff", height: 20, fontSize: 11 }} />
+            <Chip label={`Lv.${monster.level}`} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
             <Chip
-              label={monster.isParty ? "出撃中" : "待機中"}
+              label={monster.isParty ? "⚔ 出撃中" : "💤 待機中"}
               color={monster.isParty ? "success" : "default"}
               size="small"
               onClick={() => onToggleParty(!monster.isParty)}
-              sx={{ height: 18, fontSize: 11, cursor: "pointer" }}
+              sx={{ height: 20, fontSize: 11, cursor: "pointer" }}
             />
           </Box>
         </Box>
+
+        {/* 正方形ポートレート（タップで拡大） */}
+        <Box
+          onClick={() => setPortraitOpen(true)}
+          sx={{
+            width: 88, height: 88, flexShrink: 0, ml: 1.5,
+            borderRadius: 2,
+            bgcolor: "rgba(255,255,255,0.04)",
+            border: `2px solid ${TYPE_COLORS[monster.type] ?? "rgba(255,255,255,0.15)"}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+            transition: "box-shadow 0.15s",
+            "&:hover": { boxShadow: `0 0 12px ${TYPE_COLORS[monster.type] ?? "rgba(124,77,255,0.6)"}` },
+            "&:active": { opacity: 0.8 },
+          }}
+        >
+          <SpriteImage sprite={monster.sprite} size={72} alt={monster.name} />
+        </Box>
       </Box>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="subtitle2" gutterBottom>ステータス</Typography>
-              <Box sx={{ display: "flex", gap: 1, mb: 1.5 }}>
-                {[{ label: "HP", value: monster.maxHp, color: "error.main" }, { label: "MP", value: monster.maxMp, color: "primary.main" }].map(({ label, value, color }) => (
-                  <Box key={label} sx={{ flex: 1, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1, py: 0.75 }}>
-                    <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
-                    <Typography variant="body2" fontWeight={700} color={color}>{value}</Typography>
-                  </Box>
-                ))}
-              </Box>
+      {/* ── ステータス ── */}
+      <Card sx={{ mb: 1.25 }}>
+        <CardContent sx={{ py: "10px !important", px: "12px !important" }}>
+          <Typography variant="caption" color="text.secondary"
+            sx={{ fontWeight: 700, letterSpacing: 1, fontSize: 10, mb: 0.75, display: "block" }}>
+            STATS
+          </Typography>
 
-              <Box sx={{ display: "flex", gap: 1, mb: 1.5 }}>
-                {stats.map(({ label, base, bonus }) => (
-                  <Box key={label} sx={{ flex: 1, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1, py: 0.75 }}>
-                    <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
-                    <Typography variant="body2" fontWeight={700}>{base + bonus}</Typography>
-                    {bonus > 0 && (
-                      <Typography variant="caption" color="success.main">+{bonus}</Typography>
-                    )}
-                  </Box>
-                ))}
-              </Box>
-
-              {/* 経験値バー */}
-              <Box sx={{ mb: 1.5 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary">経験値</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {monster.exp || 0} / {monster.expNext || 50}
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 0 }}>
+            {STAT_ROWS.map(({ icon, label, baseKey, bonusKey }) => {
+              const base = monster[baseKey];
+              const b = bonusKey ? bonus(bonusKey) : 0;
+              return (
+                <Box key={label} sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.45 }}>
+                  <Typography sx={{ fontSize: 15, lineHeight: 1, width: 20, textAlign: "center", flexShrink: 0 }}>
+                    {icon}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ width: 30, fontSize: 11, flexShrink: 0 }}>
+                    {label}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700} sx={{ minWidth: 24 }}>
+                    {base + b}
+                  </Typography>
+                  {b > 0 && (
+                    <Typography variant="caption" color="success.main" sx={{ fontSize: 10 }}>+{b}</Typography>
+                  )}
                 </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={((monster.exp || 0) / (monster.expNext || 50)) * 100}
-                  sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    bgcolor: "rgba(255,255,255,0.1)",
-                    "& .MuiLinearProgress-bar": {
-                      bgcolor: "secondary.main",
-                      borderRadius: 4,
-                    },
-                  }}
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-                  進捗: {Math.round(((monster.exp || 0) / (monster.expNext || 50)) * 100)}%
-                </Typography>
-              </Box>
+              );
+            })}
+          </Box>
 
-              <Typography variant="caption" color="text.secondary">
-                性格: {monster.personality}　スキル: {monster.skills.join(" / ")}
+          {/* EXP バー */}
+          <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.4 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>⭐ EXP</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
+                {monster.exp} / {monster.expNext}（{expPct}%）
               </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={expPct}
+              sx={{
+                height: 6, borderRadius: 3,
+                bgcolor: "rgba(255,255,255,0.08)",
+                "& .MuiLinearProgress-bar": { bgcolor: "secondary.main", borderRadius: 3 },
+              }}
+            />
+          </Box>
 
-              <Divider sx={{ my: 1.5 }} />
+          {/* 性格・スキル */}
+          <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+            <Chip label={`😊 ${monster.personality}`} size="small" variant="outlined"
+              sx={{ height: 20, fontSize: 10 }} />
+            {monster.skills.map((sk) => (
+              <Chip key={sk} label={sk} size="small"
+                sx={{ height: 20, fontSize: 10, bgcolor: "rgba(124,77,255,0.15)", border: "1px solid rgba(124,77,255,0.3)" }} />
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
 
-              <Typography variant="subtitle2" gutterBottom>装備</Typography>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-                {SLOT_ORDER.map((slot) => (
-                  <DroppableSlot
-                    key={slot}
-                    id={`${monster.id}:${slot}`}
-                    slot={slot}
-                    equippedItem={getEquipped(slot)}
-                  />
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* ── 装備スロット ── */}
+      <Card sx={{ mb: 1.25 }}>
+        <CardContent sx={{ py: "10px !important", px: "12px !important" }}>
+          <Typography variant="caption" color="text.secondary"
+            sx={{ fontWeight: 700, letterSpacing: 1, fontSize: 10, mb: 0.75, display: "block" }}>
+            EQUIPMENT
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+            {SLOT_ORDER.map((slot) => (
+              <DroppableSlot
+                key={slot}
+                id={`${monster.id}:${slot}`}
+                slot={slot}
+                equippedItem={getEquipped(slot)}
+              />
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
 
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Typography variant="subtitle2" gutterBottom>装備品倉庫</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-                スロットへドラッグして装備 / 倉庫へ戻すと取り外し
+      {/* ── 倉庫 ── */}
+      <Card>
+        <CardContent sx={{ py: "10px !important", px: "12px !important" }}>
+          <Typography variant="caption" color="text.secondary"
+            sx={{ fontWeight: 700, letterSpacing: 1, fontSize: 10, mb: 0.5, display: "block" }}>
+            STORAGE
+          </Typography>
+          <Typography variant="caption" color="text.disabled" sx={{ fontSize: 10, display: "block", mb: 0.75 }}>
+            スロットへドラッグして装備 / 倉庫へ戻すと取り外し
+          </Typography>
+          <StoragePanel items={storageItems} />
+        </CardContent>
+      </Card>
+
+      {/* ── ポートレート拡大モーダル ── */}
+      <Modal
+        open={portraitOpen}
+        onClose={() => setPortraitOpen(false)}
+        slots={{ backdrop: Backdrop }}
+        slotProps={{ backdrop: { timeout: 300 } }}
+      >
+        <Fade in={portraitOpen} timeout={300}>
+          <Box
+            onClick={() => setPortraitOpen(false)}
+            sx={{
+              position: "fixed", inset: 0,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              gap: 2,
+            }}
+          >
+            {/* 画像コンテナ */}
+            <Box
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              sx={{
+                width: { xs: "72vw", sm: 320 },
+                height: { xs: "72vw", sm: 320 },
+                maxWidth: 320, maxHeight: 320,
+                borderRadius: 3,
+                bgcolor: "rgba(20,20,40,0.95)",
+                border: `3px solid ${TYPE_COLORS[monster.type] ?? "rgba(124,77,255,0.8)"}`,
+                boxShadow: `0 0 40px ${TYPE_COLORS[monster.type] ?? "rgba(124,77,255,0.4)"}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <SpriteImage
+                sprite={monster.sprite}
+                size={Math.min(280, typeof window !== "undefined" ? window.innerWidth * 0.64 : 280)}
+                alt={monster.name}
+              />
+            </Box>
+
+            {/* 名前・タイプ */}
+            <Box sx={{ textAlign: "center" }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <Typography variant="h6" fontWeight={700} sx={{ color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
+                {monster.name}
               </Typography>
-              <StoragePanel items={storageItems} />
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+              <Chip
+                label={`${monster.type}  Lv.${monster.level}`}
+                size="small"
+                sx={{ bgcolor: TYPE_COLORS[monster.type], color: "#fff", mt: 0.5 }}
+              />
+            </Box>
+
+            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)" }}>
+              タップして閉じる
+            </Typography>
+          </Box>
+        </Fade>
+      </Modal>
+
+      {/* ── リネームダイアログ ── */}
+      <Dialog
+        open={renameOpen}
+        onClose={() => setRenameOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <SpriteImage sprite={monster.sprite} size={32} alt={monster.name} />
+            名前を変更
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: "8px !important" }}>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="新しい名前"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && renameValue.trim()) {
+                onRename(renameValue.trim());
+                setRenameOpen(false);
+              }
+              if (e.key === "Escape") setRenameOpen(false);
+            }}
+            inputProps={{ maxLength: 20 }}
+            helperText={`${renameValue.length} / 20`}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button size="small" onClick={() => setRenameOpen(false)}>
+            キャンセル
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={!renameValue.trim() || renameValue.trim() === monster.name}
+            onClick={() => {
+              onRename(renameValue.trim());
+              setRenameOpen(false);
+            }}
+          >
+            変更する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 });
@@ -464,6 +624,7 @@ export default function GuildPage() {
             storageItems={storageItems}
             onBack={() => setSelectedId(null)}
             onToggleParty={(isParty) => handleToggleParty(selectedMonster.id, isParty)}
+            onRename={(name) => dispatch({ type: "RENAME_MONSTER", payload: { monsterId: selectedMonster.id, name } })}
           />
         )}
       </Box>

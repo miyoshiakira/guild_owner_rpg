@@ -81,13 +81,14 @@ function reducer(state: GameState, action: GameAction): GameState {
     }
 
     case "LOAD_SAVE": {
-      const { player, monsters, equipment, items } = action.payload;
+      const { player, monsters, equipment, items, materials } = action.payload;
       return {
         ...state,
         ...(player    ? { player }    : {}),
         ...(monsters  ? { monsters }  : {}),
         ...(equipment ? { equipment } : {}),
         ...(items     ? { items }     : {}),
+        ...(materials ? { materials } : {}),
       };
     }
 
@@ -233,6 +234,29 @@ function reducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "RENAME_MONSTER": {
+      const { monsterId, name } = action.payload;
+      return {
+        ...state,
+        monsters: state.monsters.map((m) =>
+          m.id === monsterId ? { ...m, name } : m
+        ),
+      };
+    }
+
+    case "RESET_GAME": {
+      return {
+        player: { ...PLAYER },
+        monsters: MONSTERS.map((m) => ({ ...m, equipped: { ...m.equipped } })),
+        equipment: EQUIPMENT.map((e) => ({ ...e })),
+        items: [...ITEMS],
+        materials: {},
+        scene: "login",
+        notification: null,
+        battleState: null,
+      };
+    }
+
     default:
       return state;
   }
@@ -258,13 +282,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
           console.log("Loaded save data:", savedData);
           
           // 読み込んだデータで状態を更新
-          if (savedData.player) {
-            dispatch({ type: "UPDATE_PLAYER", payload: savedData.player });
-          }
-          if (savedData.monsters && savedData.monsters.length > 0) {
-            // セーブデータからモンスターを復元
-            dispatch({ type: "LOAD_MONSTERS", payload: savedData.monsters });
-          }
+          dispatch({
+            type: "LOAD_SAVE",
+            payload: {
+              ...(savedData.player    ? { player:    savedData.player }    : {}),
+              ...(savedData.monsters  ? { monsters:  savedData.monsters }  : {}),
+              ...(savedData.equipment ? { equipment: savedData.equipment } : {}),
+              ...(savedData.items     ? { items:     savedData.items }     : {}),
+              ...(savedData.materials ? { materials: savedData.materials } : {}),
+            },
+          });
         }
       } catch (error) {
         console.error("Failed to load save data:", error);
@@ -286,13 +313,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
         monsters: state.monsters,
         equipment: state.equipment,
         items: state.items,
+        materials: state.materials,
       });
     }, 1500);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [state.player, state.monsters, state.equipment, state.items, state.scene]);
+  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.scene]);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>

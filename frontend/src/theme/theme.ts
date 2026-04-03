@@ -23,12 +23,16 @@ export const darkTheme = createTheme({
         root: {
           border: "1px solid rgba(124,77,255,0.2)",
           backgroundImage: "none",
+          animation: "rainbow-glow 9s linear infinite",
         },
       },
     },
     MuiChip: {
       styleOverrides: {
-        root: { fontWeight: 700 },
+        root: {
+          fontWeight: 700,
+          animation: "rainbow-glow 9s linear infinite",
+        },
       },
     },
   },

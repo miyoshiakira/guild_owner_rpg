@@ -27,6 +27,7 @@ export default function LoginPage() {
 
   const handleDeleteSave = async () => {
     await deleteSaveData();
+    dispatch({ type: "RESET_GAME" }); // メモリ上の state も初期化（再ログイン時の再書き込み防止）
     setSaveExists(false);
     dispatch({ type: "NOTIFY", payload: { message: "セーブデータを消去しました", severity: "warning" } });
   };

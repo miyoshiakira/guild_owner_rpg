@@ -25,6 +25,8 @@ export interface EnemyMaster {
   reward: { exp: number; gold: number };
   catchRate: number;
   drops: DropEntry[];
+  skills: string[];
+  personality: string;
 }
 
 // ===== クラフトレシピ =====

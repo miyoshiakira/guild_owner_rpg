@@ -26,3 +26,23 @@ body {
   background: rgba(124, 77, 255, 0.4);
   border-radius: 3px;
 }
+
+/* カード・チップのアニメーション開始タイミングを nth-child でずらして単調さを防ぐ */
+.MuiCard-root:nth-child(2n)   { animation-delay: -3s  !important; }
+.MuiCard-root:nth-child(3n)   { animation-delay: -6s  !important; }
+.MuiCard-root:nth-child(4n)   { animation-delay: -1.5s !important; }
+.MuiChip-root:nth-child(2n)   { animation-delay: -2s  !important; }
+.MuiChip-root:nth-child(3n)   { animation-delay: -5s  !important; }
+.MuiChip-root:nth-child(4n)   { animation-delay: -7s  !important; }
+
+/* 虹色ほのかグロー — Card / Chip の border-color と box-shadow をゆっくり循環させる */
+@keyframes rainbow-glow {
+  0%   { box-shadow: 0 0 7px 1px rgba(255, 80,  80,  0.22); border-color: rgba(255, 80,  80,  0.38); }
+  14%  { box-shadow: 0 0 7px 1px rgba(255, 160, 50,  0.22); border-color: rgba(255, 160, 50,  0.38); }
+  28%  { box-shadow: 0 0 7px 1px rgba(220, 230, 55,  0.22); border-color: rgba(220, 230, 55,  0.38); }
+  42%  { box-shadow: 0 0 7px 1px rgba(70,  210, 100, 0.22); border-color: rgba(70,  210, 100, 0.38); }
+  57%  { box-shadow: 0 0 7px 1px rgba(50,  170, 255, 0.22); border-color: rgba(50,  170, 255, 0.38); }
+  71%  { box-shadow: 0 0 7px 1px rgba(130, 80,  255, 0.22); border-color: rgba(130, 80,  255, 0.38); }
+  85%  { box-shadow: 0 0 7px 1px rgba(255, 70,  190, 0.22); border-color: rgba(255, 70,  190, 0.38); }
+  100% { box-shadow: 0 0 7px 1px rgba(255, 80,  80,  0.22); border-color: rgba(255, 80,  80,  0.38); }
+}

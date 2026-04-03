@@ -3,12 +3,49 @@ import { Box, Card, CardContent, Typography, Chip, Button, useMediaQuery, useThe
 import { useGame } from "../store/gameStore";
 import { TILE_MAP, TILE_COLORS, TILE_SYMBOLS, ENEMY_SPAWN_TILES } from "../data/testData";
 import { ENEMY_MASTER } from "../data/masters/enemyMaster";
+import type { EnemyMaster } from "../types/masters";
+import type { Enemy } from "../types/game";
 import { loadGameData, saveGameData } from "../db/saveService";
+
+/**
+ * 原点(0,0)からの距離をもとに敵レベルを決定する。
+ * 20×20マップで最大距離 ≈ 26.9 → 最大レベル約15。
+ */
+function distanceToLevel(row: number, col: number): number {
+  const dist = Math.sqrt(row * row + col * col);
+  return Math.max(1, Math.round(dist * 0.55));
+}
+
+/**
+ * Lv1 マスタデータを指定レベルにスケーリングして Enemy を生成する。
+ * HP/MP/ATK/DEF/SPD は (1 + (level-1) * 0.35) 倍。
+ * 報酬 EXP/Gold も距離に応じて増加する。
+ */
+function scaleEnemy(master: EnemyMaster, level: number, uid: string): Enemy {
+  const f = 1 + (level - 1) * 0.35;
+  const hp = Math.round(master.maxHp * f);
+  return {
+    ...master,
+    id: uid,
+    level,
+    hp,
+    maxHp: hp,
+    mp:    Math.round(master.maxMp * f),
+    maxMp: Math.round(master.maxMp * f),
+    atk:   Math.round(master.atk * f),
+    def:   Math.round(master.def * f),
+    spd:   Math.round(master.spd * f),
+    reward: {
+      exp:  Math.round(master.reward.exp  * Math.pow(level, 1.4)),
+      gold: Math.round(master.reward.gold * Math.pow(level, 1.2)),
+    },
+  };
+}
 
 const TILE_SIZE = 48;
 const MAP_ROWS = TILE_MAP.length;
 const MAP_COLS = TILE_MAP[0]!.length;
-const WALKABLE = [0, 4, 5, 6];
+const WALKABLE = [0, 4, 5, 6, 7, 8];
 
 // ビューポート: 奇数タイル数にするとプレイヤーが必ず中央に来る
 const VIEWPORT_TILES = 7;
@@ -17,7 +54,7 @@ const VIEWPORT_PX = TILE_SIZE * VIEWPORT_TILES;
 const CENTER_OFFSET = VIEWPORT_PX / 2 - TILE_SIZE / 2;
 
 const TILE_NAMES: Record<number, string> = {
-  0: "草原", 1: "水辺", 2: "森", 3: "岩場", 4: "道", 5: "🏘 町", 6: "⚔ ダンジョン",
+  0: "草原", 1: "水辺", 2: "森", 3: "岩場", 4: "道", 5: "🏘 町", 6: "⚔ ダンジョン", 7: "🏜 砂漠", 8: "❄ 雪原",
 };
 
 type DPadButton = { dr: number; dc: number; label: string };
@@ -133,21 +170,26 @@ export default function FieldPage() {
   const [playerPos, setPlayerPos] = useState<PlayerPos>({ row: 2, col: 4 });
   const [stepCount, setStepCount] = useState(0);
 
+  // ロード完了前は保存しないためのフラグ
+  const posLoaded = useRef(false);
+
   // マップ座標をDBからロード
   useEffect(() => {
     loadGameData().then((saved) => {
+      posLoaded.current = true;
       if (saved.playerPos) setPlayerPos(saved.playerPos);
     });
   }, []);
 
   // マップ座標をDBへデバウンスセーブ
+  // ※ アンマウント時にタイマーをキャンセルしない: バトル遷移直後でも最終座標を確実に保存する
   const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!posLoaded.current) return; // ロード完了前はスキップ
     if (posTimer.current) clearTimeout(posTimer.current);
     posTimer.current = setTimeout(() => {
       saveGameData({ playerPos });
-    }, 1000);
-    return () => { if (posTimer.current) clearTimeout(posTimer.current); };
+    }, 500);
   }, [playerPos]);
 
   const tryMove = useCallback((dr: number, dc: number) => {
@@ -161,9 +203,11 @@ export default function FieldPage() {
       if (ENEMY_SPAWN_TILES.includes(tile) && Math.random() < 0.2) {
         const r = Math.random();
         const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
+        const level = distanceToLevel(nr, nc);
+        const now = Date.now();
         const spawnedEnemies = Array.from({ length: count }, (_, k) => {
-          const e = ENEMY_MASTER[Math.floor(Math.random() * ENEMY_MASTER.length)]!;
-          return { ...e, hp: e.maxHp, id: `${e.id}-${Date.now()}-${k}` };
+          const master = ENEMY_MASTER[Math.floor(Math.random() * ENEMY_MASTER.length)]!;
+          return scaleEnemy(master, level, `${master.id}-${now}-${k}`);
         });
         setTimeout(() => {
           dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
