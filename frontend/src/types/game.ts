@@ -64,6 +64,8 @@ export interface DropEntry {
 
 export interface Enemy {
   id: string;
+  /** スポーン元のマスタ ID (e-001 など)。スカウト時のLv1復元に使用 */
+  masterId: string;
   name: string;
   type: MonsterType;
   level: number;

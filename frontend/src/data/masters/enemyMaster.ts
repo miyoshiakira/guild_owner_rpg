@@ -342,6 +342,306 @@ export const ENEMY_MASTER: EnemyMaster[] = [
       { materialId: "mat-003", rate: 0.3, minQty: 1, maxQty: 1 },  // 獣の毛皮
     ],
   },
+
+  // ── スライム派生 ─────────────────────────────────────────────────────────
+  {
+    id: "e-020",
+    name: "ヘドロスライム",
+    type: "闇",
+    level: 1,
+    hp: 18, maxHp: 18, mp: 4, maxMp: 4,
+    atk: 5, def: 8, spd: 2,
+    sprite: "スライム.png",
+    reward: { exp: 14, gold: 10 },
+    catchRate: 0.22,
+    personality: "のんき",
+    skills: ["どくしぶき", "たいあたり"],
+    drops: [
+      { materialId: "mat-001", rate: 0.7, minQty: 1, maxQty: 2 },
+      { materialId: "mat-002", rate: 0.3, minQty: 1, maxQty: 1 },
+    ],
+  },
+  {
+    id: "e-021",
+    name: "メタルスライム",
+    type: "地",
+    level: 1,
+    hp: 4, maxHp: 4, mp: 0, maxMp: 0,
+    atk: 2, def: 30, spd: 15,
+    sprite: "スライム.png",
+    reward: { exp: 80, gold: 60 },
+    catchRate: 0.05,
+    personality: "おくびょう",
+    skills: ["にげる"],
+    drops: [
+      { materialId: "mat-006", rate: 0.4, minQty: 1, maxQty: 1 },
+      { materialId: "mat-002", rate: 0.6, minQty: 1, maxQty: 2 },
+    ],
+  },
+
+  // ── 魚類派生 ──────────────────────────────────────────────────────────────
+  {
+    id: "e-022",
+    name: "ピラニア",
+    type: "水",
+    level: 1,
+    hp: 12, maxHp: 12, mp: 0, maxMp: 0,
+    atk: 8, def: 2, spd: 10,
+    sprite: "魚類.png",
+    reward: { exp: 14, gold: 10 },
+    catchRate: 0.20,
+    personality: "いじっぱり",
+    skills: ["かみつき", "はねまわる"],
+    drops: [
+      { materialId: "mat-012", rate: 0.6, minQty: 1, maxQty: 2 },
+      { materialId: "mat-015", rate: 0.4, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── ゴブリン派生 ─────────────────────────────────────────────────────────
+  {
+    id: "e-023",
+    name: "ゴブリン族長",
+    type: "地",
+    level: 1,
+    hp: 22, maxHp: 22, mp: 0, maxMp: 0,
+    atk: 9, def: 6, spd: 7,
+    sprite: "ゴブリン.png",
+    reward: { exp: 28, gold: 22 },
+    catchRate: 0.10,
+    personality: "なまいき",
+    skills: ["どなりつける", "ひっかく", "どろなげ"],
+    drops: [
+      { materialId: "mat-007", rate: 0.7, minQty: 2, maxQty: 3 },
+      { materialId: "mat-015", rate: 0.5, minQty: 1, maxQty: 2 },
+      { materialId: "mat-003", rate: 0.4, minQty: 1, maxQty: 2 },
+    ],
+  },
+  {
+    id: "e-024",
+    name: "ゴブリンシャーマン",
+    type: "闇",
+    level: 1,
+    hp: 12, maxHp: 12, mp: 14, maxMp: 14,
+    atk: 4, def: 3, spd: 7,
+    sprite: "ゴブリン.png",
+    reward: { exp: 22, gold: 18 },
+    catchRate: 0.14,
+    personality: "ずる賢い",
+    skills: ["カース", "どろなげ", "毒霧"],
+    drops: [
+      { materialId: "mat-005", rate: 0.6, minQty: 1, maxQty: 2 },
+      { materialId: "mat-007", rate: 0.4, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── オーク派生 ───────────────────────────────────────────────────────────
+  {
+    id: "e-025",
+    name: "オーク戦士",
+    type: "地",
+    level: 1,
+    hp: 24, maxHp: 24, mp: 0, maxMp: 0,
+    atk: 10, def: 8, spd: 5,
+    sprite: "オーク.png",
+    reward: { exp: 26, gold: 20 },
+    catchRate: 0.12,
+    personality: "いじっぱり",
+    skills: ["なぎはらい", "おたけび", "なぐりつける"],
+    drops: [
+      { materialId: "mat-003", rate: 0.7, minQty: 2, maxQty: 3 },
+      { materialId: "mat-004", rate: 0.5, minQty: 1, maxQty: 2 },
+    ],
+  },
+
+  // ── スケルトン派生 ───────────────────────────────────────────────────────
+  {
+    id: "e-026",
+    name: "ボーンアーチャー",
+    type: "闇",
+    level: 1,
+    hp: 14, maxHp: 14, mp: 0, maxMp: 0,
+    atk: 9, def: 3, spd: 8,
+    sprite: "スケルトン.png",
+    reward: { exp: 24, gold: 19 },
+    catchRate: 0.12,
+    personality: "ふつう",
+    skills: ["ボーンアロー", "ダブルショット"],
+    drops: [
+      { materialId: "mat-008", rate: 0.6, minQty: 1, maxQty: 3 },
+      { materialId: "mat-004", rate: 0.4, minQty: 1, maxQty: 2 },
+    ],
+  },
+  {
+    id: "e-027",
+    name: "デスナイト",
+    type: "闇",
+    level: 1,
+    hp: 26, maxHp: 26, mp: 8, maxMp: 8,
+    atk: 10, def: 9, spd: 4,
+    sprite: "スケルトン.png",
+    reward: { exp: 36, gold: 28 },
+    catchRate: 0.08,
+    personality: "いじっぱり",
+    skills: ["ボーンクラッシュ", "デスブロー", "カースボーン"],
+    drops: [
+      { materialId: "mat-008", rate: 0.7, minQty: 2, maxQty: 4 },
+      { materialId: "mat-011", rate: 0.25, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── リザードマン派生 ─────────────────────────────────────────────────────
+  {
+    id: "e-028",
+    name: "リザードシャーマン",
+    type: "炎",
+    level: 1,
+    hp: 16, maxHp: 16, mp: 16, maxMp: 16,
+    atk: 6, def: 4, spd: 6,
+    sprite: "リザードマン.png",
+    reward: { exp: 28, gold: 22 },
+    catchRate: 0.10,
+    personality: "ずる賢い",
+    skills: ["ファイアボール", "炎の壁", "毒の息"],
+    drops: [
+      { materialId: "mat-005", rate: 0.6, minQty: 1, maxQty: 2 },
+      { materialId: "mat-009", rate: 0.5, minQty: 1, maxQty: 2 },
+      { materialId: "mat-016", rate: 0.4, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── 大型獣派生 ───────────────────────────────────────────────────────────
+  {
+    id: "e-029",
+    name: "チーター",
+    type: "地",
+    level: 1,
+    hp: 15, maxHp: 15, mp: 0, maxMp: 0,
+    atk: 8, def: 3, spd: 16,
+    sprite: "トラ.png",
+    reward: { exp: 22, gold: 16 },
+    catchRate: 0.12,
+    personality: "いじっぱり",
+    skills: ["高速突進", "爪撃ち"],
+    drops: [
+      { materialId: "mat-017", rate: 0.7, minQty: 1, maxQty: 2 },
+      { materialId: "mat-003", rate: 0.4, minQty: 1, maxQty: 1 },
+    ],
+  },
+  {
+    id: "e-030",
+    name: "ライオン",
+    type: "地",
+    level: 1,
+    hp: 25, maxHp: 25, mp: 0, maxMp: 0,
+    atk: 12, def: 6, spd: 8,
+    sprite: "トラ.png",
+    reward: { exp: 34, gold: 26 },
+    catchRate: 0.08,
+    personality: "いじっぱり",
+    skills: ["獅子咆哮", "きばをむく", "爪撃ち"],
+    drops: [
+      { materialId: "mat-003", rate: 0.7, minQty: 2, maxQty: 3 },
+      { materialId: "mat-017", rate: 0.6, minQty: 1, maxQty: 2 },
+    ],
+  },
+
+  // ── 雪原ウサギ派生 ───────────────────────────────────────────────────────
+  {
+    id: "e-031",
+    name: "スノーラビット",
+    type: "水",
+    level: 1,
+    hp: 10, maxHp: 10, mp: 4, maxMp: 4,
+    atk: 4, def: 2, spd: 13,
+    sprite: "ウサギ.png",
+    reward: { exp: 10, gold: 8 },
+    catchRate: 0.28,
+    personality: "おくびょう",
+    skills: ["跳び蹴り", "氷の息"],
+    drops: [
+      { materialId: "mat-018", rate: 0.7, minQty: 1, maxQty: 2 },
+      { materialId: "mat-010", rate: 0.4, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── 鳥類派生 ─────────────────────────────────────────────────────────────
+  {
+    id: "e-032",
+    name: "暗黒の大鷹",
+    type: "闇",
+    level: 1,
+    hp: 18, maxHp: 18, mp: 6, maxMp: 6,
+    atk: 10, def: 3, spd: 12,
+    sprite: "タカ.png",
+    reward: { exp: 26, gold: 20 },
+    catchRate: 0.12,
+    personality: "いじっぱり",
+    skills: ["急降下", "かぎ爪", "闇の翼"],
+    drops: [
+      { materialId: "mat-019", rate: 0.6, minQty: 1, maxQty: 2 },
+      { materialId: "mat-017", rate: 0.4, minQty: 1, maxQty: 1 },
+      { materialId: "mat-011", rate: 0.15, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── ねこ派生 ─────────────────────────────────────────────────────────────
+  {
+    id: "e-033",
+    name: "魔法ネコ",
+    type: "闇",
+    level: 1,
+    hp: 10, maxHp: 10, mp: 16, maxMp: 16,
+    atk: 4, def: 2, spd: 10,
+    sprite: "ねこ.png",
+    reward: { exp: 20, gold: 16 },
+    catchRate: 0.18,
+    personality: "きまぐれ",
+    skills: ["魔力波", "ネコパンチ", "カース"],
+    drops: [
+      { materialId: "mat-005", rate: 0.5, minQty: 1, maxQty: 2 },
+      { materialId: "mat-017", rate: 0.5, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── 九尾の狐 ─────────────────────────────────────────────────────────────
+  {
+    id: "e-034",
+    name: "九尾の狐",
+    type: "炎",
+    level: 1,
+    hp: 22, maxHp: 22, mp: 20, maxMp: 20,
+    atk: 10, def: 5, spd: 12,
+    sprite: "きつね.png",
+    reward: { exp: 45, gold: 35 },
+    catchRate: 0.06,
+    personality: "ずる賢い",
+    skills: ["狐火", "九尾の炎", "かみつき", "まどわし"],
+    drops: [
+      { materialId: "mat-018", rate: 0.5, minQty: 1, maxQty: 2 },
+      { materialId: "mat-009", rate: 0.5, minQty: 1, maxQty: 2 },
+      { materialId: "mat-006", rate: 0.2, minQty: 1, maxQty: 1 },
+    ],
+  },
+
+  // ── 古代ガメ ─────────────────────────────────────────────────────────────
+  {
+    id: "e-035",
+    name: "古代ガメ",
+    type: "地",
+    level: 1,
+    hp: 35, maxHp: 35, mp: 0, maxMp: 0,
+    atk: 5, def: 20, spd: 1,
+    sprite: "カメ.png",
+    reward: { exp: 38, gold: 30 },
+    catchRate: 0.06,
+    personality: "のんき",
+    skills: ["鉄壁の甲羅", "かみつき", "地震"],
+    drops: [
+      { materialId: "mat-020", rate: 0.8, minQty: 2, maxQty: 3 },
+      { materialId: "mat-004", rate: 0.4, minQty: 1, maxQty: 2 },
+    ],
+  },
 ];
 
 /** id → EnemyMaster の引きマップ */

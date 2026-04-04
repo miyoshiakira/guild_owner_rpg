@@ -9,6 +9,7 @@ import type { Monster, Enemy, BattleRewards } from "../types/game";
 import { SpriteImage } from "../components/SpriteImage";
 import { processBattleDrops } from "../utils/dropUtils";
 import { getExpToNextLevel } from "../data/expTable";
+import { ENEMY_MAP } from "../data/masters/enemyMaster";
 import BattleEndModal from "../components/BattleEndModal";
 
 interface StatBarProps {
@@ -253,15 +254,26 @@ export default function BattlePage() {
       if (Math.random() < rate) {
         msgs.push(`${target.name}のスカウトに成功した！`);
         batchLog(msgs);
+        // マスタデータを参照して Lv1 ステータスでモンスターを生成
+        const master = ENEMY_MAP[target.masterId] ?? target;
         dispatch({
           type: "ADD_MONSTER",
           payload: {
-            ...battleState.enemies[targetEnemyIdx]!,
             id: `mon-${Date.now()}`,
-            hp: battleState.enemies[targetEnemyIdx]!.maxHp,
+            name: master.name,
+            type: master.type,
+            level: 1,
+            hp: master.maxHp,
+            maxHp: master.maxHp,
+            mp: master.maxMp,
+            maxMp: master.maxMp,
+            atk: master.atk,
+            def: master.def,
+            spd: master.spd,
+            sprite: master.sprite,
+            personality: master.personality,
+            skills: [...master.skills],
             isParty: false,
-            personality: battleState.enemies[targetEnemyIdx]!.personality,
-            skills: [...battleState.enemies[targetEnemyIdx]!.skills],
             equipped: { weapon: null, armor: null, accessory: null },
             exp: 0,
             expNext: getExpToNextLevel(1),

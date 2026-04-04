@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -14,6 +14,8 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import { useGame } from "../store/gameStore";
 import { CRAFT_RECIPE_MASTER } from "../data/masters/craftRecipeMaster";
@@ -25,6 +27,7 @@ export default function CraftPage() {
   const { materials } = state;
   const [selectedRecipe, setSelectedRecipe] = useState<CraftRecipe | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const canCraft = (recipe: CraftRecipe): boolean => {
     return recipe.ingredients.every(
@@ -71,11 +74,64 @@ export default function CraftPage() {
     setSelectedRecipe(null);
   };
 
+  const filteredRecipes = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return CRAFT_RECIPE_MASTER;
+    return CRAFT_RECIPE_MASTER.filter((recipe) => {
+      if (recipe.name.toLowerCase().includes(q)) return true;
+      if (recipe.description.toLowerCase().includes(q)) return true;
+      if (recipe.result.name.toLowerCase().includes(q)) return true;
+      return recipe.ingredients.some((ing) => {
+        const mat = MATERIAL_MAP[ing.materialId];
+        return mat && mat.name.toLowerCase().includes(q);
+      });
+    });
+  }, [searchQuery]);
+
   return (
     <Box sx={{ width: "100%", p: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        クラフト
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, flexWrap: "wrap" }}>
+        <Typography variant="h4" sx={{ flexShrink: 0 }}>
+          クラフト
+        </Typography>
+        <TextField
+          size="small"
+          placeholder="レシピ・素材名で検索…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          sx={{ flexGrow: 1, maxWidth: 320 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Typography sx={{ fontSize: 16, lineHeight: 1 }}>🔍</Typography>
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery ? (
+              <InputAdornment position="end">
+                <Button
+                  size="small"
+                  onClick={() => setSearchQuery("")}
+                  sx={{ minWidth: 0, p: 0.25, color: "text.secondary", fontSize: 16 }}
+                >
+                  ✕
+                </Button>
+              </InputAdornment>
+            ) : null,
+          }}
+        />
+        {searchQuery && (
+          <Typography variant="caption" color="text.secondary">
+            {filteredRecipes.length} 件
+          </Typography>
+        )}
+      </Box>
+
+      {filteredRecipes.length === 0 && (
+        <Box sx={{ textAlign: "center", py: 6, color: "text.secondary" }}>
+          <Typography variant="h5" sx={{ mb: 1 }}>🔍</Typography>
+          <Typography>「{searchQuery}」に一致するレシピが見つかりません</Typography>
+        </Box>
+      )}
 
       <Box
         sx={{
@@ -88,7 +144,7 @@ export default function CraftPage() {
           gap: 2,
         }}
       >
-        {CRAFT_RECIPE_MASTER.map((recipe) => {
+        {filteredRecipes.map((recipe) => {
           const craftable = canCraft(recipe);
           return (
             <Card

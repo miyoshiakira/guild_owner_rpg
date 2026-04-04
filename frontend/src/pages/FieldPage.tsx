@@ -10,18 +10,16 @@ import {
   DEFAULT_MAP_ID,
 } from "../data/masters/mapMaster";
 import type { MapMasterData } from "../data/masters/mapMaster";
-import { ENEMY_MASTER } from "../data/masters/enemyMaster";
+import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
 import type { EnemyMaster } from "../types/masters";
 import type { Enemy } from "../types/game";
 import { loadGameData, saveGameData } from "../db/saveService";
 
 /**
- * 原点(0,0)からの距離をもとに敵レベルを決定する。
- * 20×20マップで最大距離 ≈ 26.9 → 最大レベル約15。
+ * マップの baseLevel と levelVariance からランダムなレベルを決定する。
  */
-function distanceToLevel(row: number, col: number): number {
-  const dist = Math.sqrt(row * row + col * col);
-  return Math.max(1, Math.round(dist * 0.55));
+function mapLevel(baseLevel: number, levelVariance: number): number {
+  return baseLevel + Math.floor(Math.random() * (levelVariance + 1));
 }
 
 /**
@@ -33,6 +31,7 @@ function scaleEnemy(master: EnemyMaster, level: number, uid: string): Enemy {
   return {
     ...master,
     id: uid,
+    masterId: master.id,
     level,
     hp,
     maxHp: hp,
@@ -382,10 +381,15 @@ export default function FieldPage() {
     } else if (map.enemySpawnTiles.includes(tile) && Math.random() < 0.2) {
       const r = Math.random();
       const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
-      const level = distanceToLevel(nr, nc);
+      const level = mapLevel(map.baseLevel, map.levelVariance);
       const now = Date.now();
+      // マップ固有の敵プールからランダム選出 (未定義 ID は除外)
+      const pool = map.enemyIds
+        .map((id) => ENEMY_MAP[id])
+        .filter((m): m is EnemyMaster => m !== undefined);
+      const src = pool.length > 0 ? pool : ENEMY_MASTER;
       const spawnedEnemies = Array.from({ length: count }, (_, k) => {
-        const master = ENEMY_MASTER[Math.floor(Math.random() * ENEMY_MASTER.length)]!;
+        const master = src[Math.floor(Math.random() * src.length)]!;
         return scaleEnemy(master, level, `${master.id}-${now}-${k}`);
       });
       setTimeout(() => {
