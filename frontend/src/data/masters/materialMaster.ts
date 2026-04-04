@@ -23,6 +23,15 @@ export const MATERIAL_MASTER: MaterialItem[] = [
   { id: "mat-018", name: "柔らかい毛皮",    emoji: "🐰", description: "ウサギや小動物の滑らかな毛皮。軽量防具に最適" },
   { id: "mat-019", name: "羽根",            emoji: "🪶", description: "鳥型モンスターの羽根。矢や武器に使うと速度が上がる" },
   { id: "mat-020", name: "甲羅片",          emoji: "🐢", description: "カメの甲羅の欠片。非常に硬く防具の素材として優秀" },
+  // ── 新エリア素材 ──
+  { id: "mat-021", name: "毒液",            emoji: "🧪", description: "毒の沼地に棲む魔物から採れる濃緑の液体" },
+  { id: "mat-022", name: "深海の宝珠",      emoji: "🔵", description: "海底神殿の奥深くに眠る神秘の宝珠。魔力が凝縮している" },
+  { id: "mat-023", name: "黄金の欠片",      emoji: "🥇", description: "黄金ゴーレムの体から剥がれた純粋な金の破片" },
+  { id: "mat-024", name: "魔王の角",        emoji: "😡", description: "魔王城の守護者から得た禍々しい大きな角。極めて希少" },
+  { id: "mat-025", name: "天使の羽",        emoji: "🕊️", description: "天空聖殿に降臨した光の使者が残した白き羽" },
+  { id: "mat-026", name: "竜の鱗",          emoji: "🐉", description: "竜の棲み処に棲む古竜の体鱗。炎を帯び非常に硬い" },
+  { id: "mat-027", name: "氷晶石",          emoji: "💎", description: "氷の魔窟の最深部に結晶化した純粋な氷の石" },
+  { id: "mat-028", name: "炎玉",            emoji: "🟠", description: "火山帯の竜が体内で錬成した炎のエネルギーの塊" },
 ];
 
 /** id → MaterialItem の引きマップ */

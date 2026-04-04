@@ -156,6 +156,108 @@ export const TOWN_MASTER: TownMaster[] = [
     ]
   },
   {
+    id: "town-011",
+    name: "海底の砦",
+    description: "海底神殿の中腹に築かれた潜水士たちの前線基地。",
+    emoji: "🌊",
+    npcs: [{ id: "npc-011", name: "潜水士キルア", dialogue: "深海は危険だ。準備万端で行けよ。", emoji: "🤿" }],
+    shopItems: [
+      { ...getEquipmentById("eq-032")!, type: "equipment", price: 700 }, // 深海の宝剣
+      { ...getEquipmentById("eq-033")!, type: "equipment", price: 800 }, // 海竜の鎧
+      { ...getEquipmentById("eq-034")!, type: "equipment", price: 750 }, // 深海の盾
+      { id: "mat-022", type: "material", price: 150 },
+      { id: "mat-014", type: "material", price: 120 },
+    ]
+  },
+  {
+    id: "town-012",
+    name: "沼地の番小屋",
+    description: "毒の沼地の入口付近に建つ、一見廃屋のような小屋。",
+    emoji: "🏚",
+    npcs: [{ id: "npc-012", name: "老薬師ゼル", dialogue: "毒には毒を。備えておけ。", emoji: "🧪" }],
+    shopItems: [
+      { id: "mat-021", type: "material", price: 40 },
+      { id: "mat-015", type: "material", price: 50 },
+      { id: "mat-007", type: "material", price: 40 },
+    ]
+  },
+  {
+    id: "town-013",
+    name: "古代遺跡の番所",
+    description: "ミルウッドの奥に残る古代遺跡の入口に設置された番所。",
+    emoji: "🗿",
+    npcs: [{ id: "npc-013", name: "遺跡守ガル", dialogue: "先人の知恵がここに眠る。", emoji: "🏛️" }],
+    shopItems: [
+      { ...getEquipmentById("eq-021")!, type: "equipment", price: 650 }, // 古代の剣
+      { ...getEquipmentById("eq-029")!, type: "equipment", price: 600 }, // 古代の鎧
+      { id: "mat-006", type: "material", price: 100 },
+    ]
+  },
+  {
+    id: "town-015",
+    name: "氷窟の灯台",
+    description: "氷の魔窟への入口に建つ小さな灯台。旅人に道を示す。",
+    emoji: "🏮",
+    npcs: [{ id: "npc-015", name: "氷窟の守衛ビョルン", dialogue: "凍えた心にも灯を。", emoji: "🕯️" }],
+    shopItems: [
+      { ...getEquipmentById("eq-037")!, type: "equipment", price: 850 }, // 氷晶の剣
+      { ...getEquipmentById("eq-038")!, type: "equipment", price: 900 }, // 氷晶の鎧
+      { id: "mat-027", type: "material", price: 180 },
+      { id: "mat-010", type: "material", price: 80 },
+    ]
+  },
+  {
+    id: "town-016",
+    name: "竜の里",
+    description: "竜の棲み処に近い山の集落。竜と共存する勇猛な一族が住む。",
+    emoji: "🏔",
+    npcs: [{ id: "npc-016", name: "竜使いドラゴ", dialogue: "竜は強い。だがお前も強くなれる。", emoji: "🐉" }],
+    shopItems: [
+      { ...getEquipmentById("eq-035")!, type: "equipment", price: 900 }, // 炎の剣
+      { ...getEquipmentById("eq-036")!, type: "equipment", price: 1000 }, // 竜の鱗の鎧
+      { id: "mat-026", type: "material", price: 200 },
+      { id: "mat-028", type: "material", price: 160 },
+    ]
+  },
+  {
+    id: "town-017",
+    name: "竜の巣の前哨基地",
+    description: "竜の棲み処の中心部に設けられた調査隊の前哨基地。",
+    emoji: "⛺",
+    npcs: [{ id: "npc-017", name: "調査隊長フォルス", dialogue: "ここより先は真の猛者のみが踏み込める。", emoji: "🔭" }],
+    shopItems: [
+      { id: "mat-026", type: "material", price: 250 },
+      { id: "mat-016", type: "material", price: 120 },
+      { id: "mat-028", type: "material", price: 200 },
+    ]
+  },
+  {
+    id: "town-018",
+    name: "天空の城塞",
+    description: "天空聖殿の麓に築かれた空中要塞。光の騎士団が守護する。",
+    emoji: "☁️",
+    npcs: [{ id: "npc-018", name: "光の騎士エリアス", dialogue: "神の加護があらんことを。", emoji: "⚔️" }],
+    shopItems: [
+      { ...getEquipmentById("eq-039")!, type: "equipment", price: 1500 }, // 天使の弓
+      { ...getEquipmentById("eq-040")!, type: "equipment", price: 1200 }, // 天空のローブ
+      { id: "mat-025", type: "material", price: 300 },
+      { id: "mat-006", type: "material", price: 200 },
+    ]
+  },
+  {
+    id: "town-019",
+    name: "奈落の前哨基地",
+    description: "魔王城手前の最後の前線基地。勇者たちが決死の覚悟で集う。",
+    emoji: "💀",
+    npcs: [{ id: "npc-019", name: "前線指揮官ダルク", dialogue: "引き返すなら今のうちだ。", emoji: "🗡️" }],
+    shopItems: [
+      { ...getEquipmentById("eq-041")!, type: "equipment", price: 2000 }, // 魔王の剣
+      { ...getEquipmentById("eq-042")!, type: "equipment", price: 2200 }, // 魔王の鎧
+      { ...getEquipmentById("eq-043")!, type: "equipment", price: 1800 }, // 黄金の盾
+      { id: "mat-024", type: "material", price: 500 },
+    ]
+  },
+  {
     id: "town-014",
     name: "マグマの洞窟",
     description: "溶岩モンスターが巣食う危険な場所。",

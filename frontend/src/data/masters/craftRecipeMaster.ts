@@ -181,7 +181,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
   },
   {
     id: "craft-022",
-    name: "古代の兜", // 「甲羅の大盾」から修正
+    name: "古代の兜",
     description: "古代の技術で作られた非常に硬い兜",
     emoji: "⛑️",
     ingredients: [
@@ -189,6 +189,92 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-013", qty: 1 },
     ],
     result: getEquipmentById("eq-030"),
+    resultQty: 1,
+  },
+
+  // === 新エリアレシピ ===
+  {
+    id: "craft-023",
+    name: "深海の宝剣",
+    description: "深海の宝珠と竜の牙を組み合わせた海の剣",
+    emoji: "🔱",
+    ingredients: [
+      { materialId: "mat-022", qty: 1 },
+      { materialId: "mat-014", qty: 2 },
+    ],
+    result: getEquipmentById("eq-032"),
+    resultQty: 1,
+  },
+  {
+    id: "craft-024",
+    name: "海竜の鎧",
+    description: "深海の宝珠と鱗で鍛えた重厚な鎧",
+    emoji: "🐉",
+    ingredients: [
+      { materialId: "mat-022", qty: 1 },
+      { materialId: "mat-012", qty: 4 },
+    ],
+    result: getEquipmentById("eq-033"),
+    resultQty: 1,
+  },
+  {
+    id: "craft-025",
+    name: "炎の剣",
+    description: "炎玉と竜の鱗を溶かし込んだ炎を帯びた剣",
+    emoji: "🔥",
+    ingredients: [
+      { materialId: "mat-028", qty: 2 },
+      { materialId: "mat-026", qty: 1 },
+    ],
+    result: getEquipmentById("eq-035"),
+    resultQty: 1,
+  },
+  {
+    id: "craft-026",
+    name: "竜の鱗の鎧",
+    description: "古竜の鱗を何枚も重ねた最高級の鎧",
+    emoji: "🐲",
+    ingredients: [
+      { materialId: "mat-026", qty: 3 },
+      { materialId: "mat-003", qty: 2 },
+    ],
+    result: getEquipmentById("eq-036"),
+    resultQty: 1,
+  },
+  {
+    id: "craft-027",
+    name: "氷晶の剣",
+    description: "氷晶石の冷気を刃に閉じ込めた速さの剣",
+    emoji: "💎",
+    ingredients: [
+      { materialId: "mat-027", qty: 2 },
+      { materialId: "mat-013", qty: 2 },
+    ],
+    result: getEquipmentById("eq-037"),
+    resultQty: 1,
+  },
+  {
+    id: "craft-028",
+    name: "天使の弓",
+    description: "天使の羽と魔力の結晶で作られた神弓",
+    emoji: "🏹",
+    ingredients: [
+      { materialId: "mat-025", qty: 2 },
+      { materialId: "mat-006", qty: 2 },
+    ],
+    result: getEquipmentById("eq-039"),
+    resultQty: 1,
+  },
+  {
+    id: "craft-029",
+    name: "魔王の剣",
+    description: "魔王の角から削り出した究極の剣",
+    emoji: "😡",
+    ingredients: [
+      { materialId: "mat-024", qty: 1 },
+      { materialId: "mat-023", qty: 2 },
+    ],
+    result: getEquipmentById("eq-041"),
     resultQty: 1,
   },
 ];

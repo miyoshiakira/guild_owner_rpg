@@ -251,6 +251,24 @@ function reducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "REORDER_MONSTERS": {
+      const newPartyOrder = action.payload; // party member IDs in new order
+      const result = [...state.monsters];
+      // パーティメンバーが占めているインデックスを取得
+      const partyIndices = result.reduce<number[]>((acc, m, i) => {
+        if (m.isParty) acc.push(i);
+        return acc;
+      }, []);
+      // 同じインデックス位置に新しい順序でパーティメンバーを配置
+      newPartyOrder.forEach((id, i) => {
+        const monster = state.monsters.find((m) => m.id === id);
+        if (monster && partyIndices[i] !== undefined) {
+          result[partyIndices[i]] = monster;
+        }
+      });
+      return { ...state, monsters: result };
+    }
+
     case "RESET_GAME": {
       return {
         player: { ...PLAYER },

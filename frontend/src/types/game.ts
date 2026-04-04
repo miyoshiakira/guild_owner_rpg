@@ -151,4 +151,5 @@ export type GameAction =
   | { type: "APPLY_BATTLE_REWARDS"; payload: BattleRewards }
   | { type: "LOAD_MONSTERS"; payload: Monster[] }
   | { type: "RESET_GAME" }
-  | { type: "RENAME_MONSTER"; payload: { monsterId: string; name: string } };
+  | { type: "RENAME_MONSTER"; payload: { monsterId: string; name: string } }
+  | { type: "REORDER_MONSTERS"; payload: string[] };

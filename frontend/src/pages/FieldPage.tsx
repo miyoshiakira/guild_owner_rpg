@@ -18,6 +18,7 @@ import { loadGameData, saveGameData } from "../db/saveService";
 import TownModal from "../components/TownModal";
 import ShopModal from "../components/ShopModal";
 import TownEnterButton from "../components/TownEnterButton";
+import WorldMapModal from "../components/WorldMapModal";
 
 /**
  * マップの baseLevel と levelVariance からランダムなレベルを決定する。
@@ -291,6 +292,7 @@ export default function FieldPage() {
   const [transitionLabel, setTransitionLabel] = useState<string>("");
   const [showTownModal, setShowTownModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showWorldMap, setShowWorldMap] = useState(false);
 
   const posLoaded = useRef(false);
   // 遷移先情報を保持（フェードアウト完了後に適用）
@@ -479,7 +481,15 @@ export default function FieldPage() {
             />
             <Chip label={MAP_TILE_NAMES[currentTile]} size="small" variant="outlined" />
             <Chip label={`歩数: ${stepCount}`} size="small" variant="outlined" />
-            <Button size="small" variant="outlined" sx={{ ml: "auto" }} onClick={() => dispatch({ type: "SET_SCENE", payload: "guild" })}>
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{ ml: "auto", borderColor: "rgba(124,77,255,0.5)", color: "text.secondary" }}
+              onClick={() => setShowWorldMap(true)}
+            >
+              🗺️
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => dispatch({ type: "SET_SCENE", payload: "guild" })}>
               ← 拠点へ
             </Button>
           </Box>
@@ -579,6 +589,13 @@ export default function FieldPage() {
       {currentTile === 5 && currentTown && (
         <TownEnterButton onEnterTown={() => setShowTownModal(true)} />
       )}
+
+      {/* ワールドマップモーダル */}
+      <WorldMapModal
+        open={showWorldMap}
+        onClose={() => setShowWorldMap(false)}
+        currentMapId={currentMap.id}
+      />
     </Box>
   );
 }
