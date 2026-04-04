@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from "react";
+import React, { useState, useCallback, memo, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -556,10 +556,22 @@ export default function GuildPage() {
   const { state, dispatch } = useGame();
   const { monsters, equipment } = state;
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 遷移方向: null=初回(アニメーションなし), "forward"=詳細へ, "back"=一覧へ
+  const transitionDir = useRef<"forward" | "back" | null>(null);
 
   const selectedMonster = selectedId ? monsters.find((m) => m.id === selectedId) ?? null : null;
   const storageItems = equipment.filter((e) => !e.equippedTo);
   const partyCount = monsters.filter((m) => m.isParty).length;
+
+  const handleSelectMonster = useCallback((id: string) => {
+    transitionDir.current = "forward";
+    setSelectedId(id);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    transitionDir.current = "back";
+    setSelectedId(null);
+  }, []);
 
   const handleToggleParty = useCallback((monsterId: string, isParty: boolean) => {
     dispatch({ type: "SET_PARTY", payload: { monsterId, isParty } });
@@ -593,7 +605,9 @@ export default function GuildPage() {
       <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
 
         {!selectedMonster && (
-          <>
+          <Box sx={{
+            animation: transitionDir.current === "back" ? "slide-in-left 0.28s ease-out" : "none",
+          }}>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
               <Typography variant="h6">🐾 モンスター管理</Typography>
               <Chip
@@ -608,24 +622,26 @@ export default function GuildPage() {
                 <Grid item xs={4} sm={3} md={2} key={m.id}>
                   <MonsterCell
                     monster={m}
-                    onClick={() => setSelectedId(m.id)}
+                    onClick={() => handleSelectMonster(m.id)}
                     onToggleParty={(isParty) => handleToggleParty(m.id, isParty)}
                   />
                 </Grid>
               ))}
             </Grid>
-          </>
+          </Box>
         )}
 
         {selectedMonster && (
-          <MonsterDetail
-            monster={selectedMonster}
-            allEquipment={equipment}
-            storageItems={storageItems}
-            onBack={() => setSelectedId(null)}
-            onToggleParty={(isParty) => handleToggleParty(selectedMonster.id, isParty)}
-            onRename={(name) => dispatch({ type: "RENAME_MONSTER", payload: { monsterId: selectedMonster.id, name } })}
-          />
+          <Box sx={{ animation: "slide-in-right 0.28s ease-out" }}>
+            <MonsterDetail
+              monster={selectedMonster}
+              allEquipment={equipment}
+              storageItems={storageItems}
+              onBack={handleBack}
+              onToggleParty={(isParty) => handleToggleParty(selectedMonster.id, isParty)}
+              onRename={(name) => dispatch({ type: "RENAME_MONSTER", payload: { monsterId: selectedMonster.id, name } })}
+            />
+          </Box>
         )}
       </Box>
 

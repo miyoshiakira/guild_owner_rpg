@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Box, Card, CardContent, Typography, Chip, Button, useMediaQuery, useTheme } from "@mui/material";
 import { useGame } from "../store/gameStore";
-import { TILE_MAP, TILE_COLORS, TILE_SYMBOLS, ENEMY_SPAWN_TILES } from "../data/testData";
+import {
+  MAP_MASTER_MAP,
+  MAP_TILE_COLORS,
+  MAP_TILE_SYMBOLS,
+  MAP_TILE_NAMES,
+  WALKABLE_TILES,
+  DEFAULT_MAP_ID,
+} from "../data/masters/mapMaster";
+import type { MapMasterData } from "../data/masters/mapMaster";
 import { ENEMY_MASTER } from "../data/masters/enemyMaster";
 import type { EnemyMaster } from "../types/masters";
 import type { Enemy } from "../types/game";
@@ -18,8 +26,6 @@ function distanceToLevel(row: number, col: number): number {
 
 /**
  * Lv1 マスタデータを指定レベルにスケーリングして Enemy を生成する。
- * HP/MP/ATK/DEF/SPD は (1 + (level-1) * 0.35) 倍。
- * 報酬 EXP/Gold も距離に応じて増加する。
  */
 function scaleEnemy(master: EnemyMaster, level: number, uid: string): Enemy {
   const f = 1 + (level - 1) * 0.35;
@@ -43,9 +49,6 @@ function scaleEnemy(master: EnemyMaster, level: number, uid: string): Enemy {
 }
 
 const TILE_SIZE = 48;
-const MAP_ROWS = TILE_MAP.length;
-const MAP_COLS = TILE_MAP[0]!.length;
-const WALKABLE = [0, 4, 5, 6, 7, 8];
 
 // ビューポート: 奇数タイル数にするとプレイヤーが必ず中央に来る
 const VIEWPORT_TILES = 7;
@@ -53,32 +56,130 @@ const VIEWPORT_PX = TILE_SIZE * VIEWPORT_TILES;
 // 中央オフセット = ビューポート中央 - タイル半分
 const CENTER_OFFSET = VIEWPORT_PX / 2 - TILE_SIZE / 2;
 
-const TILE_NAMES: Record<number, string> = {
-  0: "草原", 1: "水辺", 2: "森", 3: "岩場", 4: "道", 5: "🏘 町", 6: "⚔ ダンジョン", 7: "🏜 砂漠", 8: "❄ 雪原",
-};
-
-type DPadButton = { dr: number; dc: number; label: string };
-type DPadCell = DPadButton | null;
-
-const DPAD: DPadCell[][] = [
-  [null, { dr: -1, dc: 0, label: "▲" }, null],
-  [{ dr: 0, dc: -1, label: "◀" }, null, { dr: 0, dc: 1, label: "▶" }],
-  [null, { dr: 1, dc: 0, label: "▼" }, null],
-];
-
 interface PlayerPos { row: number; col: number; }
 
+// ── 円形モバイルパッド ──────────────────────────────────────────────────
+const PAD_SIZE = 160;
+const BTN_SIZE = 50;
+
+const PAD_DIRS = [
+  { dr: -1, dc:  0, key: "up",    label: "▲",
+    pos: { top: 4, left: PAD_SIZE / 2 - BTN_SIZE / 2 } },
+  { dr:  1, dc:  0, key: "down",  label: "▼",
+    pos: { bottom: 4, left: PAD_SIZE / 2 - BTN_SIZE / 2 } },
+  { dr:  0, dc: -1, key: "left",  label: "◀",
+    pos: { left: 4, top: PAD_SIZE / 2 - BTN_SIZE / 2 } },
+  { dr:  0, dc:  1, key: "right", label: "▶",
+    pos: { right: 4, top: PAD_SIZE / 2 - BTN_SIZE / 2 } },
+] as const;
+
+function CircularDPad({ onMove }: { onMove: (dr: number, dc: number) => void }) {
+  const holdTimer    = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  const startMove = useCallback((dr: number, dc: number, key: string) => {
+    setActiveKey(key);
+    onMove(dr, dc);
+    holdTimer.current = setTimeout(() => {
+      holdInterval.current = setInterval(() => onMove(dr, dc), 130);
+    }, 220);
+  }, [onMove]);
+
+  const stopMove = useCallback(() => {
+    setActiveKey(null);
+    if (holdTimer.current)    { clearTimeout(holdTimer.current);   holdTimer.current    = null; }
+    if (holdInterval.current) { clearInterval(holdInterval.current); holdInterval.current = null; }
+  }, []);
+
+  useEffect(() => () => stopMove(), [stopMove]);
+
+  return (
+    <Box sx={{ position: "relative", width: PAD_SIZE, height: PAD_SIZE, flexShrink: 0, userSelect: "none" }}>
+      <Box sx={{
+        position: "absolute", inset: 0,
+        borderRadius: "50%",
+        background: "radial-gradient(circle at 40% 35%, rgba(60,50,100,0.9) 0%, rgba(15,12,32,0.97) 100%)",
+        border: "2px solid rgba(124,77,255,0.35)",
+        boxShadow: "0 6px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)",
+      }} />
+      <Box sx={{
+        position: "absolute",
+        top: "50%", left: BTN_SIZE + 8, right: BTN_SIZE + 8,
+        height: 1, bgcolor: "rgba(124,77,255,0.18)", transform: "translateY(-50%)",
+      }} />
+      <Box sx={{
+        position: "absolute",
+        left: "50%", top: BTN_SIZE + 8, bottom: BTN_SIZE + 8,
+        width: 1, bgcolor: "rgba(124,77,255,0.18)", transform: "translateX(-50%)",
+      }} />
+      <Box sx={{
+        position: "absolute",
+        top: "50%", left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 28, height: 28,
+        borderRadius: "50%",
+        background: "radial-gradient(circle at 40% 35%, rgba(160,130,255,0.25), rgba(80,60,160,0.15))",
+        border: "1.5px solid rgba(124,77,255,0.4)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+      }} />
+      {PAD_DIRS.map(({ dr, dc, key, label, pos }) => {
+        const active = activeKey === key;
+        return (
+          <Box
+            key={key}
+            sx={{
+              position: "absolute",
+              width: BTN_SIZE, height: BTN_SIZE,
+              borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer",
+              touchAction: "none",
+              background: active
+                ? "radial-gradient(circle, rgba(160,120,255,0.7), rgba(100,60,200,0.5))"
+                : "radial-gradient(circle at 40% 35%, rgba(100,80,180,0.35), rgba(60,40,120,0.2))",
+              border: `1.5px solid ${active ? "rgba(180,150,255,0.9)" : "rgba(124,77,255,0.5)"}`,
+              boxShadow: active
+                ? "0 0 16px rgba(124,77,255,0.7), inset 0 1px 0 rgba(255,255,255,0.2)"
+                : "inset 0 1px 0 rgba(255,255,255,0.08)",
+              transform: active ? "scale(0.86)" : "scale(1)",
+              transition: "transform 0.07s, background 0.07s, box-shadow 0.07s, border-color 0.07s",
+              ...pos,
+            }}
+            onPointerDown={(e) => { e.preventDefault(); startMove(dr, dc, key); }}
+            onPointerUp={stopMove}
+            onPointerLeave={stopMove}
+            onPointerCancel={stopMove}
+          >
+            <Typography sx={{
+              fontSize: 17, lineHeight: 1, fontWeight: 700,
+              color: active ? "#fff" : "rgba(180,160,255,0.9)",
+              textShadow: active ? "0 0 8px rgba(200,180,255,0.8)" : "none",
+            }}>
+              {label}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+// ── マップビューポート ────────────────────────────────────────────────────
 interface MapViewportProps {
   playerPos: PlayerPos;
   onSwipe: (dr: number, dc: number) => void;
+  currentMap: MapMasterData;
 }
 
-function MapViewport({ playerPos, onSwipe }: MapViewportProps) {
-  // カメラオフセット: マップを動かしてプレイヤーを中央に固定
+function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
+  const tileMap = currentMap.tileMap;
+  const MAP_ROWS = tileMap.length;
+  const MAP_COLS = tileMap[0]!.length;
+
   const translateX = CENTER_OFFSET - playerPos.col * TILE_SIZE;
   const translateY = CENTER_OFFSET - playerPos.row * TILE_SIZE;
 
-  // スワイプ検出
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const SWIPE_THRESHOLD = 20;
 
@@ -94,10 +195,7 @@ function MapViewport({ playerPos, onSwipe }: MapViewportProps) {
     const dx = t.clientX - touchStart.current.x;
     const dy = t.clientY - touchStart.current.y;
     touchStart.current = null;
-
     if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
-
-    // 縦横どちらの移動量が大きいか判定
     if (Math.abs(dx) >= Math.abs(dy)) {
       onSwipe(0, dx > 0 ? 1 : -1);
     } else {
@@ -117,11 +215,10 @@ function MapViewport({ playerPos, onSwipe }: MapViewportProps) {
         border: "2px solid rgba(124,77,255,0.5)",
         borderRadius: 2,
         bgcolor: "#0d0d1a",
-        touchAction: "none", // ブラウザのスクロールを無効化
+        touchAction: "none",
         userSelect: "none",
       }}
     >
-      {/* マップ全体をtransformで移動 */}
       <Box
         sx={{
           position: "absolute",
@@ -133,16 +230,17 @@ function MapViewport({ playerPos, onSwipe }: MapViewportProps) {
           willChange: "transform",
         }}
       >
-        {TILE_MAP.map((row, r) =>
+        {tileMap.map((row, r) =>
           row.map((tile, c) => {
             const isPlayer = playerPos.row === r && playerPos.col === c;
+            const isPortal = tile === 9;
             return (
               <Box
                 key={`${r}-${c}`}
                 sx={{
                   width: TILE_SIZE,
                   height: TILE_SIZE,
-                  bgcolor: isPlayer ? "rgba(255,215,64,0.15)" : TILE_COLORS[tile],
+                  bgcolor: isPlayer ? "rgba(255,215,64,0.18)" : MAP_TILE_COLORS[tile],
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -150,9 +248,23 @@ function MapViewport({ playerPos, onSwipe }: MapViewportProps) {
                   outline: isPlayer ? "2px solid #ffd740" : "none",
                   outlineOffset: "-2px",
                   boxSizing: "border-box",
+                  boxShadow: isPlayer ? "inset 0 0 12px rgba(255,215,64,0.25)" : "none",
+                  animation: isPortal ? "portal-pulse 1.5s ease-in-out infinite" : "none",
+                  transition: "background-color 0.1s",
                 }}
               >
-                {isPlayer ? "🧑" : TILE_SYMBOLS[tile]}
+                {isPlayer ? (
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      animation: "player-bounce 0.9s ease-in-out infinite",
+                      lineHeight: 1,
+                    }}
+                  >
+                    🧑
+                  </Box>
+                ) : MAP_TILE_SYMBOLS[tile]}
               </Box>
             );
           })
@@ -162,62 +274,125 @@ function MapViewport({ playerPos, onSwipe }: MapViewportProps) {
   );
 }
 
+// ── メインページ ──────────────────────────────────────────────────────────
 export default function FieldPage() {
   const { dispatch } = useGame();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [playerPos, setPlayerPos] = useState<PlayerPos>({ row: 2, col: 4 });
-  const [stepCount, setStepCount] = useState(0);
+  const [currentMapId, setCurrentMapId] = useState<string>(DEFAULT_MAP_ID);
+  const [playerPos, setPlayerPos]       = useState<PlayerPos>({ row: 2, col: 4 });
+  const [stepCount, setStepCount]       = useState(0);
+  // "idle" | "out" (フェードアウト中) | "in" (フェードイン中)
+  const [transitionPhase, setTransitionPhase] = useState<"idle" | "out" | "in">("idle");
+  const [transitionLabel, setTransitionLabel] = useState<string>("");
 
-  // ロード完了前は保存しないためのフラグ
   const posLoaded = useRef(false);
+  // 遷移先情報を保持（フェードアウト完了後に適用）
+  const pendingTransition = useRef<{ mapId: string; pos: PlayerPos } | null>(null);
+  // 最新の map/pos を ref で追跡して stale closure を防ぐ
+  const currentMapRef    = useRef<MapMasterData>(MAP_MASTER_MAP[DEFAULT_MAP_ID]!);
+  const playerPosRef     = useRef<PlayerPos>({ row: 2, col: 4 });
+  const transitionPhaseRef = useRef<"idle" | "out" | "in">("idle");
 
-  // マップ座標をDBからロード
+  const currentMap = MAP_MASTER_MAP[currentMapId] ?? MAP_MASTER_MAP[DEFAULT_MAP_ID]!;
+
+  // ref を最新値と同期
+  useEffect(() => { currentMapRef.current = currentMap; }, [currentMap]);
+  useEffect(() => { playerPosRef.current = playerPos; }, [playerPos]);
+  useEffect(() => { transitionPhaseRef.current = transitionPhase; }, [transitionPhase]);
+
+  // ロード
   useEffect(() => {
     loadGameData().then((saved) => {
       posLoaded.current = true;
-      if (saved.playerPos) setPlayerPos(saved.playerPos);
+      if (saved.playerPos)    setPlayerPos(saved.playerPos);
+      if (saved.currentMapId) setCurrentMapId(saved.currentMapId);
     });
   }, []);
 
-  // マップ座標をDBへデバウンスセーブ
-  // ※ アンマウント時にタイマーをキャンセルしない: バトル遷移直後でも最終座標を確実に保存する
+  // デバウンスセーブ
   const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!posLoaded.current) return; // ロード完了前はスキップ
+    if (!posLoaded.current) return;
     if (posTimer.current) clearTimeout(posTimer.current);
     posTimer.current = setTimeout(() => {
-      saveGameData({ playerPos });
+      saveGameData({ playerPos, currentMapId });
     }, 500);
-  }, [playerPos]);
+  }, [playerPos, currentMapId]);
 
-  const tryMove = useCallback((dr: number, dc: number) => {
-    setPlayerPos((prev) => {
-      const nr = prev.row + dr;
-      const nc = prev.col + dc;
-      if (nr < 0 || nr >= MAP_ROWS || nc < 0 || nc >= MAP_COLS) return prev;
-      const tile = TILE_MAP[nr]![nc]!;
-      if (!WALKABLE.includes(tile)) return prev;
+  // マップ遷移: フェードアウト → マップ切り替え → フェードイン
+  const doTransition = useCallback((toMapId: string, toPos: PlayerPos, label: string) => {
+    pendingTransition.current = { mapId: toMapId, pos: toPos };
+    setTransitionLabel(label);
+    setTransitionPhase("out");
+  }, []);
 
-      if (ENEMY_SPAWN_TILES.includes(tile) && Math.random() < 0.2) {
-        const r = Math.random();
-        const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
-        const level = distanceToLevel(nr, nc);
-        const now = Date.now();
-        const spawnedEnemies = Array.from({ length: count }, (_, k) => {
-          const master = ENEMY_MASTER[Math.floor(Math.random() * ENEMY_MASTER.length)]!;
-          return scaleEnemy(master, level, `${master.id}-${now}-${k}`);
-        });
-        setTimeout(() => {
-          dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
-        }, 200);
+  // フェードアウト完了 → データ切り替え → フェードイン開始
+  useEffect(() => {
+    if (transitionPhase !== "out") return;
+    const t = setTimeout(() => {
+      const p = pendingTransition.current;
+      if (p) {
+        setCurrentMapId(p.mapId);
+        setPlayerPos(p.pos);
+        playerPosRef.current = p.pos;
+        pendingTransition.current = null;
       }
+      setTransitionPhase("in");
+    }, 420);
+    return () => clearTimeout(t);
+  }, [transitionPhase]);
 
-      setStepCount((s) => s + 1);
-      return { row: nr, col: nc };
-    });
-  }, [dispatch]);
+  // フェードイン完了 → idle
+  useEffect(() => {
+    if (transitionPhase !== "in") return;
+    const t = setTimeout(() => setTransitionPhase("idle"), 420);
+    return () => clearTimeout(t);
+  }, [transitionPhase]);
+
+  // 移動処理（ref ベースで stale closure を回避）
+  const tryMove = useCallback((dr: number, dc: number) => {
+    if (transitionPhaseRef.current !== "idle") return;
+
+    const map = currentMapRef.current;
+    const prev = playerPosRef.current;
+    const tileMap = map.tileMap;
+    const MAP_ROWS = tileMap.length;
+    const MAP_COLS = tileMap[0]!.length;
+    const nr = prev.row + dr;
+    const nc = prev.col + dc;
+
+    if (nr < 0 || nr >= MAP_ROWS || nc < 0 || nc >= MAP_COLS) return;
+    const tile = tileMap[nr]![nc]!;
+    if (!WALKABLE_TILES.has(tile)) return;
+
+    setPlayerPos({ row: nr, col: nc });
+    setStepCount((s) => s + 1);
+
+    // ポータル遷移チェック
+    const transition = map.transitions.find(
+      (t) => t.fromRow === nr && t.fromCol === nc
+    );
+
+    if (transition) {
+      setTimeout(() => {
+        doTransition(transition.toMapId, { row: transition.toRow, col: transition.toCol }, transition.label);
+      }, 150);
+    } else if (map.enemySpawnTiles.includes(tile) && Math.random() < 0.2) {
+      const r = Math.random();
+      const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
+      const level = distanceToLevel(nr, nc);
+      const now = Date.now();
+      const spawnedEnemies = Array.from({ length: count }, (_, k) => {
+        const master = ENEMY_MASTER[Math.floor(Math.random() * ENEMY_MASTER.length)]!;
+        return scaleEnemy(master, level, `${master.id}-${now}-${k}`);
+      });
+      setTimeout(() => {
+        dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
+      }, 200);
+    }
+  }, [dispatch, doTransition]);
 
   // キーボード操作
   useEffect(() => {
@@ -231,16 +406,46 @@ export default function FieldPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [tryMove]);
 
-  const currentTile = TILE_MAP[playerPos.row]![playerPos.col]!;
+  const currentTile = currentMap.tileMap[playerPos.row]?.[playerPos.col] ?? 0;
 
   return (
-    <Box sx={{ p: { xs: 1, sm: 2 } }}>
+    <Box sx={{ p: { xs: 1, sm: 2 }, position: "relative" }}>
+
+      {/* マップ遷移オーバーレイ */}
+      <Box sx={{
+        position: "fixed",
+        inset: 0,
+        bgcolor: "black",
+        zIndex: 9999,
+        pointerEvents: transitionPhase !== "idle" ? "all" : "none",
+        opacity: transitionPhase === "out" ? 1 : 0,
+        animation: transitionPhase === "out"
+          ? "map-fade-out 0.42s ease forwards"
+          : transitionPhase === "in"
+          ? "map-fade-in 0.42s ease forwards"
+          : "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        {transitionPhase !== "idle" && (
+          <Typography sx={{ color: "rgba(180,140,255,0.9)", fontSize: 18, fontWeight: 700, letterSpacing: 2 }}>
+            {transitionLabel}
+          </Typography>
+        )}
+      </Box>
+
       {/* ヘッダー */}
       <Card sx={{ mb: 1.5 }}>
         <CardContent sx={{ py: "8px !important", px: "12px !important" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-            <Typography variant="h6" sx={{ fontSize: { xs: 14, sm: 18 } }}>🗺 フィールド</Typography>
-            <Chip label={TILE_NAMES[currentTile]} size="small" variant="outlined" />
+            <Chip
+              label={`${currentMap.emoji} ${currentMap.name}`}
+              size="small"
+              sx={{ bgcolor: "rgba(124,77,255,0.18)", borderColor: "rgba(124,77,255,0.5)", color: "text.primary" }}
+              variant="outlined"
+            />
+            <Chip label={MAP_TILE_NAMES[currentTile]} size="small" variant="outlined" />
             <Chip label={`歩数: ${stepCount}`} size="small" variant="outlined" />
             <Button size="small" variant="outlined" sx={{ ml: "auto" }} onClick={() => dispatch({ type: "SET_SCENE", payload: "guild" })}>
               ← 拠点へ
@@ -254,65 +459,69 @@ export default function FieldPage() {
 
         {/* マップ + コントロール */}
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
-          <MapViewport playerPos={playerPos} onSwipe={tryMove} />
+          <MapViewport playerPos={playerPos} onSwipe={tryMove} currentMap={currentMap} />
 
-          {/* D-pad: モバイルは大きく、PCは小さめ */}
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gridTemplateRows: "repeat(3, 1fr)",
-              gap: 0.5,
-              width: isMobile ? 168 : 144,
-              height: isMobile ? 168 : 144,
-            }}
-          >
-            {DPAD.map((row, ri) =>
-              row.map((btn, ci) =>
-                btn ? (
-                  <Button
-                    key={`${ri}-${ci}`}
-                    variant="contained"
-                    sx={{ minWidth: 0, p: 0, fontSize: isMobile ? 22 : 18, borderRadius: 2 }}
-                    onPointerDown={(e) => {
-                      e.preventDefault(); // タップ時の遅延を防ぐ
-                      tryMove(btn.dr, btn.dc);
-                    }}
-                  >
-                    {btn.label}
-                  </Button>
-                ) : (
-                  <Box key={`${ri}-${ci}`} />
-                )
-              )
-            )}
-          </Box>
+          {/* 円形モバイルパッド */}
+          <CircularDPad onMove={tryMove} />
 
-          {!isMobile && (
-            <Typography variant="caption" color="text.secondary">
-              キーボード: WASD / 矢印キー　|　マップをスワイプでも操作可
-            </Typography>
-          )}
-          {isMobile && (
-            <Typography variant="caption" color="text.secondary">
-              マップをスワイプしても移動できます
-            </Typography>
-          )}
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
+            {isMobile
+              ? "長押しで連続移動 | スワイプも可"
+              : "長押しで連続移動 | WASD / 矢印キーも可"}
+          </Typography>
         </Box>
 
-        {/* 凡例: PCのみ表示 */}
+        {/* 凡例 + マップ情報: PCのみ表示 */}
         {!isMobile && (
-          <Card sx={{ minWidth: 150, height: "fit-content" }}>
-            <CardContent>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>凡例</Typography>
-              {Object.entries(TILE_NAMES).map(([k, v]) => (
-                <Box key={k} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                  <Box sx={{ width: 14, height: 14, bgcolor: TILE_COLORS[Number(k)], borderRadius: 0.5, flexShrink: 0 }} />
-                  <Typography variant="caption">{v}</Typography>
-                </Box>
-              ))}
-            </CardContent>
-          </Card>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {/* マップ情報 */}
+            <Card sx={{ minWidth: 160 }}>
+              <CardContent sx={{ pb: "12px !important" }}>
+                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>現在地</Typography>
+                <Typography variant="h6" sx={{ fontSize: 15 }}>
+                  {currentMap.emoji} {currentMap.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {currentMap.description}
+                </Typography>
+                {currentMap.transitions.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                      🚪 出口:
+                    </Typography>
+                    {currentMap.transitions.map((t, i) => (
+                      <Chip
+                        key={i}
+                        label={t.label}
+                        size="small"
+                        variant="outlined"
+                        sx={{ mr: 0.5, mb: 0.5, borderColor: "rgba(124,77,255,0.5)", fontSize: 10 }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 凡例 */}
+            <Card sx={{ minWidth: 160 }}>
+              <CardContent sx={{ pb: "12px !important" }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>凡例</Typography>
+                {Object.entries(MAP_TILE_NAMES).map(([k, v]) => (
+                  <Box key={k} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                    <Box sx={{
+                      width: 14, height: 14,
+                      bgcolor: MAP_TILE_COLORS[Number(k)],
+                      borderRadius: 0.5,
+                      flexShrink: 0,
+                      border: Number(k) === 9 ? "1px solid rgba(180,140,255,0.7)" : "none",
+                    }} />
+                    <Typography variant="caption">{v}</Typography>
+                  </Box>
+                ))}
+              </CardContent>
+            </Card>
+          </Box>
         )}
       </Box>
     </Box>

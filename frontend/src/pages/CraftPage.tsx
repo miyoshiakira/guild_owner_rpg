@@ -14,7 +14,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Alert,
 } from "@mui/material";
 import { useGame } from "../store/gameStore";
 import { CRAFT_RECIPE_MASTER } from "../data/masters/craftRecipeMaster";
@@ -176,60 +175,165 @@ export default function CraftPage() {
       </Box>
 
       {/* クラフト確認ダイアログ */}
-      <Dialog open={dialogOpen} onClose={handleDialogClose} maxWidth="sm" fullWidth>
-        <DialogTitle>クラフト確認</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "background.paper",
+            border: "1px solid rgba(124,77,255,0.3)",
+            borderRadius: 2,
+            backgroundImage: "none",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            borderBottom: "1px solid rgba(124,77,255,0.2)",
+            pb: 1.5,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            fontWeight: 700,
+            color: "primary.light",
+          }}
+        >
+          ⚒️ クラフト確認
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5 }}>
           {selectedRecipe && (
             <Box>
-              <Typography variant="h6" gutterBottom>
-                {selectedRecipe.emoji} {selectedRecipe.name}
+              {/* アイテム名 */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  mb: 2.5,
+                }}
+              >
+                <Typography variant="h3" lineHeight={1}>{selectedRecipe.emoji}</Typography>
+                <Box>
+                  <Typography variant="h6" fontWeight={700}>
+                    {selectedRecipe.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {selectedRecipe.description}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* 消費素材 */}
+              <Typography
+                variant="subtitle2"
+                sx={{ color: "text.secondary", mb: 1, textTransform: "uppercase", letterSpacing: 1, fontSize: "0.7rem" }}
+              >
+                消費素材
               </Typography>
-              
-              <Alert severity="info" sx={{ mb: 2 }}>
-                以下の素材を消費してクラフトします
-              </Alert>
+              <Box
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 1.5,
+                  mb: 2.5,
+                  overflow: "hidden",
+                }}
+              >
+                <List dense disablePadding>
+                  {selectedRecipe.ingredients.map((ingredient, idx) => {
+                    const material = MATERIAL_MAP[ingredient.materialId];
+                    const status = getIngredientStatus(ingredient.materialId, ingredient.qty);
+                    return (
+                      <ListItem
+                        key={ingredient.materialId}
+                        sx={{
+                          borderBottom:
+                            idx < selectedRecipe.ingredients.length - 1
+                              ? "1px solid rgba(255,255,255,0.06)"
+                              : "none",
+                          py: 1,
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 40 }}>
+                          <Typography variant="h5" lineHeight={1}>{material.emoji}</Typography>
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={material.name}
+                          secondary={`必要: ${ingredient.qty}`}
+                          primaryTypographyProps={{ fontWeight: 600, fontSize: "0.95rem" }}
+                          secondaryTypographyProps={{ fontSize: "0.75rem" }}
+                        />
+                        <Chip
+                          label={`${status.current} / ${status.required}`}
+                          size="small"
+                          color={status.hasEnough ? "success" : "error"}
+                          sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Box>
 
-              <List>
-                {selectedRecipe.ingredients.map((ingredient) => {
-                  const material = MATERIAL_MAP[ingredient.materialId];
-                  return (
-                    <ListItem key={ingredient.materialId}>
-                      <ListItemIcon>
-                        <Typography variant="h5">{material.emoji}</Typography>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={material.name}
-                        secondary={`x${ingredient.qty}`}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </List>
-
-              <Box sx={{ mt: 2, p: 2, bgcolor: "grey.100", borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  作成結果:
+              {/* 作成結果 */}
+              <Typography
+                variant="subtitle2"
+                sx={{ color: "text.secondary", mb: 1, textTransform: "uppercase", letterSpacing: 1, fontSize: "0.7rem" }}
+              >
+                作成結果
+              </Typography>
+              <Box
+                sx={{
+                  bgcolor: "rgba(124,77,255,0.1)",
+                  border: "1px solid rgba(124,77,255,0.3)",
+                  borderRadius: 1.5,
+                  p: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                }}
+              >
+                <Typography variant="h4" lineHeight={1}>
+                  {selectedRecipe.result.sprite}
                 </Typography>
-                <Typography variant="body1">
-                  {selectedRecipe.result.type === "equipment" ? (
-                    <>
-                      {selectedRecipe.result.sprite} {selectedRecipe.result.name}
-                      {selectedRecipe.resultQty > 1 && ` x${selectedRecipe.resultQty}`}
-                    </>
-                  ) : (
-                    <>
-                      {selectedRecipe.result.sprite} {selectedRecipe.result.name}
-                      {selectedRecipe.resultQty > 1 && ` x${selectedRecipe.resultQty}`}
-                    </>
-                  )}
-                </Typography>
+                <Box>
+                  <Typography variant="body1" fontWeight={700}>
+                    {selectedRecipe.result.name}
+                    {selectedRecipe.resultQty > 1 && (
+                      <Typography component="span" color="secondary.main" ml={0.5}>
+                        x{selectedRecipe.resultQty}
+                      </Typography>
+                    )}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {selectedRecipe.result.effect}
+                  </Typography>
+                </Box>
               </Box>
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>キャンセル</Button>
-          <Button onClick={handleCraftConfirm} variant="contained">
+        <DialogActions
+          sx={{
+            borderTop: "1px solid rgba(124,77,255,0.2)",
+            px: 3,
+            py: 1.5,
+            gap: 1,
+          }}
+        >
+          <Button
+            onClick={handleDialogClose}
+            sx={{ color: "text.secondary" }}
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleCraftConfirm}
+            variant="contained"
+            sx={{ px: 3, fontWeight: 700 }}
+          >
             作成する
           </Button>
         </DialogActions>

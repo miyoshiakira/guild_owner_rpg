@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Box, Card, CardContent, Typography, Button, LinearProgress,
-  Fade,
+  Fade, Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
 import type { LinearProgressProps } from "@mui/material";
 import { useGame } from "../store/gameStore";
@@ -86,6 +86,7 @@ export default function BattlePage() {
 
   // 戦闘終了シグナル: null = 戦闘中, それ以外 = 結果を処理待ち
   const [battleEndSignal, setBattleEndSignal] = useState<BattleEndSignal | null>(null);
+  const [runConfirmOpen, setRunConfirmOpen] = useState(false);
 
   // ── 戦闘終了シグナルを検知してモーダルを開く ─────────────────────────
   // useEffect で処理することで、state が完全にコミットされた後に実行される
@@ -283,8 +284,7 @@ export default function BattlePage() {
   const handleCommand = (cmd: Command) => {
     if (phase !== "command") return;
     if (cmd === "run") {
-      setBattleEndSignal({ reason: "run", finalAllies: allies });
-      setPhase("end");
+      setRunConfirmOpen(true);
       return;
     }
     if (aliveEnemyIdxs.length === 1) {
@@ -304,10 +304,10 @@ export default function BattlePage() {
 
   return (
     <>
-      <Fade in>
+      <Fade in timeout={400}>
         <Box sx={{
           height: "calc(100vh - 48px)",
-          bgcolor: "#0d0d2e",
+          animation: "battle-bg-pulse 4s ease-in-out infinite",
           display: "flex",
           flexDirection: "column",
           p: 1,
@@ -331,16 +331,16 @@ export default function BattlePage() {
               sx={{ flexShrink: 0, mb: 0.75 }}>
               敵 {aliveEnemyIdxs.length}/{enemies.length}
             </Typography>
-            <Box sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
+            <Box className="battle-cards-wrap" sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
               {enemies.map((enemy, i) => (
-                <Fade in={true} timeout={300} key={`${enemy.id}-${i}`}>
-                  <Card sx={{
-                    bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
-                    border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
-                    opacity: enemy.hp <= 0 ? 0.35 : 1,
-                    transition: "opacity 0.3s",
-                    flexShrink: 0,
-                  }}>
+                <Card key={`${enemy.id}-${i}`} style={{ ["--card-delay" as string]: `${i * 70}ms` }} sx={{
+                  bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
+                  border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
+                  opacity: enemy.hp <= 0 ? 0.35 : 1,
+                  transition: "opacity 0.4s, border-color 0.3s",
+                  flexShrink: 0,
+                  animation: `slide-in-left 0.28s ease-out var(--card-delay, 0ms) both`,
+                }}>
                     <CardContent sx={{ p: "6px 8px !important" }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
                         <SpriteImage sprite={enemy.sprite} size={36} alt={enemy.name} />
@@ -354,7 +354,6 @@ export default function BattlePage() {
                       <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
                     </CardContent>
                   </Card>
-                </Fade>
               ))}
             </Box>
           </Box>
@@ -365,18 +364,19 @@ export default function BattlePage() {
               sx={{ flexShrink: 0, mb: 0.75 }}>
               味方 {allies.filter((a) => a.hp > 0).length}/{allies.length}
             </Typography>
-            <Box sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
+            <Box className="battle-cards-wrap" sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
               {allies.map((ally, i) => {
                 const isActive = i === activeAllyIdx && phase !== "end" && ally.hp > 0;
                 return (
-                  <Fade in={true} timeout={300} key={ally.id} style={{ transitionDelay: `${i * 60}ms` }}>
-                    <Card sx={{
+                  <Card key={ally.id} style={{ ["--card-delay" as string]: `${i * 70}ms` }} sx={{
                       bgcolor: ally.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(76,175,80,0.1)",
                       border: `1px solid ${isActive ? "#4caf50" : ally.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(76,175,80,0.3)"}`,
                       opacity: ally.hp <= 0 ? 0.35 : 1,
-                      boxShadow: isActive ? "0 0 6px rgba(76,175,80,0.6)" : "none",
-                      transition: "all 0.3s",
+                      transition: "opacity 0.4s, border-color 0.3s",
                       flexShrink: 0,
+                      animation: isActive
+                        ? "active-ally-pulse 1.6s ease-in-out infinite"
+                        : `slide-in-right 0.28s ease-out var(--card-delay, 0ms) both`,
                     }}>
                       <CardContent sx={{ p: "6px 8px !important" }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
@@ -392,7 +392,6 @@ export default function BattlePage() {
                         <StatBar label="MP" value={ally.mp} max={ally.maxMp} color="primary" />
                       </CardContent>
                     </Card>
-                  </Fade>
                 );
               })}
             </Box>
@@ -404,11 +403,15 @@ export default function BattlePage() {
           <CardContent sx={{ p: "8px 10px !important", height: "100%", overflow: "hidden" }}>
             {log.map((l, i) => (
               <Typography
-                key={i}
+                key={`${i}-${l}`}
                 variant="caption"
                 display="block"
                 color={i === 0 ? "white" : "text.secondary"}
-                sx={{ opacity: Math.max(0.2, 1 - i * 0.18), lineHeight: 1.5 }}
+                sx={{
+                  opacity: Math.max(0.2, 1 - i * 0.18),
+                  lineHeight: 1.5,
+                  animation: i === 0 ? "log-slide-in 0.2s ease-out" : "none",
+                }}
               >
                 {l}
               </Typography>
@@ -432,7 +435,7 @@ export default function BattlePage() {
                   return (
                     <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)} key={i}
                       sx={{ flexDirection: "column", lineHeight: 1.3, py: 0.75 }}>
-                      <span>{enemy.sprite} {enemy.name}</span>
+                      <span>{enemy.name}</span>
                       {scoutRate !== null && (
                         <Typography component="span" sx={{ fontSize: 10, color: "secondary.main", fontWeight: 700 }}>
                           スカウト {Math.round(scoutRate * 100)}%
@@ -473,6 +476,48 @@ export default function BattlePage() {
 
       </Box>
       </Fade>
+
+      {/* 逃げる確認ダイアログ */}
+      <Dialog
+        open={runConfirmOpen}
+        onClose={() => setRunConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "background.paper",
+            border: "1px solid rgba(255,152,0,0.3)",
+            borderRadius: 2,
+            backgroundImage: "none",
+          },
+        }}
+      >
+        <DialogTitle sx={{ borderBottom: "1px solid rgba(255,152,0,0.2)", fontWeight: 700 }}>
+          💨 逃げる
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            バトルから逃げますか？経験値・ゴールドは獲得できません。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: "1px solid rgba(255,255,255,0.08)", px: 3, py: 1.5, gap: 1 }}>
+          <Button onClick={() => setRunConfirmOpen(false)} sx={{ color: "text.secondary" }}>
+            戻る
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            sx={{ fontWeight: 700 }}
+            onClick={() => {
+              setRunConfirmOpen(false);
+              setBattleEndSignal({ reason: "run", finalAllies: allies });
+              setPhase("end");
+            }}
+          >
+            逃げる
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Battle End Modal */}
       <BattleEndModal

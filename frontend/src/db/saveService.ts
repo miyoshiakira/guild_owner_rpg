@@ -14,6 +14,7 @@ export interface SavedGameData {
   items: Item[];
   materials: Record<string, number>;
   playerPos: PlayerPos;
+  currentMapId: string;
 }
 
 /**

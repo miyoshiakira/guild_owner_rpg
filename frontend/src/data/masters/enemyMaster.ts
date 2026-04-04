@@ -37,6 +37,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     skills: ["はねまわる"],
     drops: [
       { materialId: "mat-001", rate: 0.5, minQty: 1, maxQty: 2 },
+      { materialId: "mat-012", rate: 0.7, minQty: 1, maxQty: 2 }, // 鱗
     ],
   },
   {
@@ -53,6 +54,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     skills: ["つっこみ", "たいあたり"],
     drops: [
       { materialId: "mat-003", rate: 0.6, minQty: 1, maxQty: 2 },
+      { materialId: "mat-017", rate: 0.5, minQty: 1, maxQty: 2 }, // 獣の爪
     ],
   },
   {
@@ -70,6 +72,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     drops: [
       { materialId: "mat-007", rate: 0.6, minQty: 1, maxQty: 2 },
       { materialId: "mat-003", rate: 0.3, minQty: 1, maxQty: 1 },
+      { materialId: "mat-015", rate: 0.4, minQty: 1, maxQty: 1 }, // 毒の牙
     ],
   },
   {
@@ -121,6 +124,8 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     drops: [
       { materialId: "mat-009", rate: 0.5, minQty: 1, maxQty: 2 },
       { materialId: "mat-005", rate: 0.3, minQty: 1, maxQty: 2 },
+      { materialId: "mat-016", rate: 0.6, minQty: 1, maxQty: 2 }, // 炎の鱗
+      { materialId: "mat-012", rate: 0.5, minQty: 1, maxQty: 1 }, // 鱗
     ],
   },
   {
@@ -138,6 +143,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     drops: [
       { materialId: "mat-003", rate: 0.6, minQty: 2, maxQty: 3 },
       { materialId: "mat-007", rate: 0.4, minQty: 1, maxQty: 2 },
+      { materialId: "mat-013", rate: 0.5, minQty: 1, maxQty: 2 }, // 鉄の欠片
     ],
   },
   {
@@ -155,6 +161,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     drops: [
       { materialId: "mat-004", rate: 0.7, minQty: 2, maxQty: 4 },
       { materialId: "mat-011", rate: 0.2, minQty: 1, maxQty: 1 },
+      { materialId: "mat-013", rate: 0.8, minQty: 2, maxQty: 4 }, // 鉄の欠片
     ],
   },
   {
@@ -172,6 +179,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     drops: [
       { materialId: "mat-003", rate: 0.7, minQty: 1, maxQty: 2 },
       { materialId: "mat-010", rate: 0.3, minQty: 1, maxQty: 2 },
+      { materialId: "mat-017", rate: 0.6, minQty: 1, maxQty: 2 }, // 獣の爪
     ],
   },
   {
@@ -189,6 +197,8 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     drops: [
       { materialId: "mat-010", rate: 0.5, minQty: 1, maxQty: 2 },
       { materialId: "mat-001", rate: 0.4, minQty: 1, maxQty: 2 },
+      { materialId: "mat-012", rate: 0.6, minQty: 1, maxQty: 2 }, // 鱗
+      { materialId: "mat-015", rate: 0.3, minQty: 1, maxQty: 1 }, // 毒の牙
     ],
   },
   {
@@ -207,6 +217,129 @@ export const ENEMY_MASTER: EnemyMaster[] = [
       { materialId: "mat-010", rate: 0.7, minQty: 2, maxQty: 4 },
       { materialId: "mat-006", rate: 0.4, minQty: 1, maxQty: 2 },
       { materialId: "mat-011", rate: 0.3, minQty: 1, maxQty: 1 },
+      { materialId: "mat-012", rate: 0.5, minQty: 2, maxQty: 3 }, // 鱗
+      { materialId: "mat-014", rate: 0.25, minQty: 1, maxQty: 1 }, // 竜の牙（希少）
+    ],
+  },
+
+  // ── 獣系モンスター ────────────────────────────────────────────────────
+  {
+    id: "e-013",
+    name: "ウサギ",
+    type: "地",
+    level: 1,
+    hp: 8, maxHp: 8, mp: 0, maxMp: 0,
+    atk: 3, def: 1, spd: 12,
+    sprite: "ウサギ.png",
+    reward: { exp: 7, gold: 5 },
+    catchRate: 0.35,
+    personality: "おくびょう",
+    skills: ["跳び蹴り"],
+    drops: [
+      { materialId: "mat-018", rate: 0.8, minQty: 1, maxQty: 2 }, // 柔らかい毛皮
+    ],
+  },
+  {
+    id: "e-014",
+    name: "スズメ",
+    type: "光",
+    level: 1,
+    hp: 6, maxHp: 6, mp: 0, maxMp: 0,
+    atk: 3, def: 1, spd: 14,
+    sprite: "スズメ.png",
+    reward: { exp: 6, gold: 4 },
+    catchRate: 0.30,
+    personality: "おくびょう",
+    skills: ["くちばし攻撃"],
+    drops: [
+      { materialId: "mat-019", rate: 0.8, minQty: 1, maxQty: 3 }, // 羽根
+    ],
+  },
+  {
+    id: "e-015",
+    name: "タカ",
+    type: "光",
+    level: 1,
+    hp: 14, maxHp: 14, mp: 0, maxMp: 0,
+    atk: 7, def: 2, spd: 11,
+    sprite: "タカ.png",
+    reward: { exp: 18, gold: 13 },
+    catchRate: 0.18,
+    personality: "いじっぱり",
+    skills: ["急降下", "かぎ爪"],
+    drops: [
+      { materialId: "mat-019", rate: 0.7, minQty: 1, maxQty: 2 }, // 羽根
+      { materialId: "mat-017", rate: 0.3, minQty: 1, maxQty: 1 }, // 獣の爪
+    ],
+  },
+  {
+    id: "e-016",
+    name: "しばいぬ",
+    type: "地",
+    level: 1,
+    hp: 16, maxHp: 16, mp: 0, maxMp: 0,
+    atk: 6, def: 3, spd: 8,
+    sprite: "しばいぬ.png",
+    reward: { exp: 16, gold: 12 },
+    catchRate: 0.25,
+    personality: "なまいき",
+    skills: ["噛みつき", "威嚇"],
+    drops: [
+      { materialId: "mat-017", rate: 0.6, minQty: 1, maxQty: 2 }, // 獣の爪
+      { materialId: "mat-018", rate: 0.5, minQty: 1, maxQty: 1 }, // 柔らかい毛皮
+      { materialId: "mat-003", rate: 0.3, minQty: 1, maxQty: 1 }, // 獣の毛皮
+    ],
+  },
+  {
+    id: "e-017",
+    name: "ねこ",
+    type: "地",
+    level: 1,
+    hp: 12, maxHp: 12, mp: 4, maxMp: 4,
+    atk: 6, def: 2, spd: 11,
+    sprite: "ねこ.png",
+    reward: { exp: 14, gold: 10 },
+    catchRate: 0.22,
+    personality: "きまぐれ",
+    skills: ["ひっかく", "ネコパンチ"],
+    drops: [
+      { materialId: "mat-017", rate: 0.6, minQty: 1, maxQty: 2 }, // 獣の爪
+      { materialId: "mat-018", rate: 0.5, minQty: 1, maxQty: 1 }, // 柔らかい毛皮
+    ],
+  },
+  {
+    id: "e-018",
+    name: "きつね",
+    type: "炎",
+    level: 1,
+    hp: 14, maxHp: 14, mp: 6, maxMp: 6,
+    atk: 6, def: 3, spd: 10,
+    sprite: "きつね.png",
+    reward: { exp: 18, gold: 14 },
+    catchRate: 0.18,
+    personality: "ずる賢い",
+    skills: ["かみつき", "狐火"],
+    drops: [
+      { materialId: "mat-017", rate: 0.5, minQty: 1, maxQty: 2 }, // 獣の爪
+      { materialId: "mat-018", rate: 0.4, minQty: 1, maxQty: 1 }, // 柔らかい毛皮
+      { materialId: "mat-003", rate: 0.3, minQty: 1, maxQty: 1 }, // 獣の毛皮
+    ],
+  },
+  {
+    id: "e-019",
+    name: "カメ",
+    type: "地",
+    level: 1,
+    hp: 22, maxHp: 22, mp: 0, maxMp: 0,
+    atk: 3, def: 13, spd: 2,
+    sprite: "カメ.png",
+    reward: { exp: 20, gold: 15 },
+    catchRate: 0.20,
+    personality: "のんき",
+    skills: ["引っ込む", "かみつき"],
+    drops: [
+      { materialId: "mat-020", rate: 0.75, minQty: 1, maxQty: 2 }, // 甲羅片
+      { materialId: "mat-003", rate: 0.3, minQty: 1, maxQty: 1 },  // 獣の毛皮
     ],
   },
 ];
