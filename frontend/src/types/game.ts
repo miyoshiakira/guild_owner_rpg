@@ -143,6 +143,7 @@ export type GameAction =
   | { type: "END_BATTLE" }
   | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
   | { type: "UNEQUIP"; payload: { equipmentId: string } }
+  | { type: "ADD_EQUIPMENT"; payload: Equipment }
   | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials">> }
   | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
   | { type: "ADD_MATERIALS"; payload: Record<string, number> }

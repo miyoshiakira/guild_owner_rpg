@@ -110,6 +110,13 @@ function reducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "ADD_EQUIPMENT": {
+      return {
+        ...state,
+        equipment: [...state.equipment, action.payload],
+      };
+    }
+
     case "ADD_MATERIALS": {
       const newMaterials = { ...state.materials };
       Object.entries(action.payload).forEach(([materialId, qty]) => {

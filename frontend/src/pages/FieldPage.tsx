@@ -9,11 +9,15 @@ import {
   WALKABLE_TILES,
   DEFAULT_MAP_ID,
 } from "../data/masters/mapMaster";
+import { TOWN_MAP } from "../data/masters/townMaster";
 import type { MapMasterData } from "../data/masters/mapMaster";
 import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
 import type { EnemyMaster } from "../types/masters";
 import type { Enemy } from "../types/game";
 import { loadGameData, saveGameData } from "../db/saveService";
+import TownModal from "../components/TownModal";
+import ShopModal from "../components/ShopModal";
+import TownEnterButton from "../components/TownEnterButton";
 
 /**
  * マップの baseLevel と levelVariance からランダムなレベルを決定する。
@@ -285,6 +289,8 @@ export default function FieldPage() {
   // "idle" | "out" (フェードアウト中) | "in" (フェードイン中)
   const [transitionPhase, setTransitionPhase] = useState<"idle" | "out" | "in">("idle");
   const [transitionLabel, setTransitionLabel] = useState<string>("");
+  const [showTownModal, setShowTownModal] = useState(false);
+  const [showShopModal, setShowShopModal] = useState(false);
 
   const posLoaded = useRef(false);
   // 遷移先情報を保持（フェードアウト完了後に適用）
@@ -411,6 +417,28 @@ export default function FieldPage() {
   }, [tryMove]);
 
   const currentTile = currentMap.tileMap[playerPos.row]?.[playerPos.col] ?? 0;
+  const getCurrentTown = () => {
+    if (!currentMap.townTileMappings) return undefined;
+    
+    const townMapping = currentMap.townTileMappings.find(
+      mapping => mapping.row === playerPos.row && mapping.col === playerPos.col
+    );
+    return townMapping ? TOWN_MAP[townMapping.townId] : undefined;
+  };
+  const currentTown = getCurrentTown();
+
+  const handleShop = () => {
+    setShowTownModal(false);
+    if (currentTown) {
+      setShowShopModal(true);
+    }
+  };
+
+  const handleInteract = () => {
+    setShowTownModal(false);
+    // TODO: 交流画面へ遷移
+    dispatch({ type: "NOTIFY", payload: { message: "交流機能は準備中です", severity: "info" } });
+  };
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2 }, position: "relative" }}>
@@ -528,6 +556,29 @@ export default function FieldPage() {
           </Box>
         )}
       </Box>
+
+      {/* 町モーダル */}
+      <TownModal
+        open={showTownModal}
+        onClose={() => setShowTownModal(false)}
+        onShop={handleShop}
+        onInteract={handleInteract}
+        town={currentTown}
+      />
+
+      {/* 買い物モーダル */}
+      {currentTown && (
+        <ShopModal
+          open={showShopModal}
+          onClose={() => setShowShopModal(false)}
+          town={currentTown}
+        />
+      )}
+
+      {/* 町入るボタン */}
+      {currentTile === 5 && currentTown && (
+        <TownEnterButton onEnterTown={() => setShowTownModal(true)} />
+      )}
     </Box>
   );
 }

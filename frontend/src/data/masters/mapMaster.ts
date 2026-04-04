@@ -72,7 +72,18 @@ export interface MapMasterData {
   levelVariance: number;
   transitions: MapTransition[];
   defaultPos: { row: number; col: number };
+  /** このマップにある町の ID リスト */
+  townIds?: string[];
+  /** このマップにある町のタイル位置マッピング */
+  townTileMappings?: TownTileMapping[];
   tileMap: number[][];
+}
+
+/** 町タイル位置と町IDのマッピング */
+export interface TownTileMapping {
+  row: number;
+  col: number;
+  townId: string;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -307,6 +318,13 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 1,
     levelVariance: 4,
     defaultPos: { row: 2, col: 4 },
+    townIds: ["town-001", "town-002", "town-003", "town-004"],
+    townTileMappings: [
+      { row: 3, col: 4, townId: "town-001" }, // アルバスの里
+      { row: 10, col: 5, townId: "town-002" }, // 宿場ミドウェイ
+      { row: 15, col: 4, townId: "town-003" }, // 漁師村ラグナ
+      { row: 14, col: 18, townId: "town-004" }, // 砂漠の砦スエズ
+    ],
     transitions: [
       { fromRow: 2,  fromCol: 14, toMapId: "map-003", toRow: 19, toCol: 9,  label: "❄ フロストハイム雪原へ…" },
       { fromRow: 14, fromCol: 19, toMapId: "map-002", toRow: 1,  toCol: 1,  label: "🏜 カルダ砂漠へ…" },
@@ -321,6 +339,12 @@ export const MAP_MASTER: MapMasterData[] = [
     description: "伝説の戦士カルダの名を冠した灼熱の砂漠。カルダシティとカルダ旧市街が砂の中に建つ。",
     emoji: "🏜",
     enemySpawnTiles: [7, 0],
+    townIds: ["town-005", "town-002", "town-004", "town-009"],
+    townTileMappings: [
+      { row: 6, col: 10, townId: "town-005" }, // カルダシティ
+      { row: 10, col: 5, townId: "town-002" }, // 宿場ミドウェイ
+      { row: 14, col: 1, townId: "town-004" }, // カルダ旧市街
+    ],
     enemyIds: [
       "e-004", // ゴブリン
       "e-023", // ゴブリン族長
@@ -336,6 +360,10 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 5,
     levelVariance: 5,
     defaultPos: { row: 1, col: 1 },
+    townIds: ["town-007"],
+    townTileMappings: [
+      { row: 4, col: 5, townId: "town-007" }, // フロスト村
+    ],
     transitions: [
       { fromRow: 0,  fromCol: 0,  toMapId: "map-001", toRow: 14, toCol: 18, label: "🌿 エルダリア平原へ…" },
       { fromRow: 19, fromCol: 19, toMapId: "map-007", toRow: 0,  toCol: 1,  label: "🕳 アビスの奈落へ…" },
@@ -345,9 +373,15 @@ export const MAP_MASTER: MapMasterData[] = [
   {
     id: "map-003",
     name: "フロストハイム雪原",
-    description: "北方語で「霜の故郷」を意味する永久凍土。フロスト村とウィンターホルムが凍てつく大地に佇む。",
+    description: "北方語で「霜の故郷」を意味する永久凍土。",
     emoji: "❄",
-    enemySpawnTiles: [8, 0],
+    enemySpawnTiles: [0, 7, 8],
+    townIds: ["town-007", "town-008", "town-012"],
+    townTileMappings: [
+      { row: 4, col: 5, townId: "town-007" }, // フロスト村
+      { row: 14, col: 15, townId: "town-008" }, // ウィンターホルム
+      { row: 0, col: 1, townId: "town-012" }, // セレスティア聖域
+    ],
     enemyIds: [
       "e-001", // スライム
       "e-006", // スケルトン
@@ -370,9 +404,14 @@ export const MAP_MASTER: MapMasterData[] = [
   {
     id: "map-004",
     name: "ミルウッドの深森",
-    description: "千年の古木が茂る神秘の森。精霊の里エルーンが木々の奥に隠れ、古代樹の洞窟が探険者を待つ。",
+    description: "千年の古木が茂る神秘の森。精霊が宿ると言われる。",
     emoji: "🌲",
-    enemySpawnTiles: [0],
+    enemySpawnTiles: [0, 7, 8],
+    townIds: ["town-006", "town-013"],
+    townTileMappings: [
+      { row: 3, col: 2, townId: "town-006" }, // 隠し里エルーン
+      { row: 17, col: 17, townId: "town-013" }, // 遺跡ダンジョン入口
+    ],
     enemyIds: [
       "e-003", // イノシシ
       "e-013", // ウサギ
@@ -397,9 +436,14 @@ export const MAP_MASTER: MapMasterData[] = [
   {
     id: "map-005",
     name: "ヴォルカノス火山帯",
-    description: "活火山ヴォルカノスを中心とした危険な溶岩地帯。灰の砦アシュフォードに少数の開拓者が暮らす。",
+    description: "活火山ヴォルカノスを中心とした危険な溶岩地帯。",
     emoji: "🌋",
-    enemySpawnTiles: [0],
+    enemySpawnTiles: [7, 0],
+    townIds: ["town-008", "town-014"],
+    townTileMappings: [
+      { row: 10, col: 14, townId: "town-008" }, // 灰の砦アシュフォード
+      { row: 18, col: 0, townId: "town-014" }, // マグマの洞窟
+    ],
     enemyIds: [
       "e-007", // リザードマン
       "e-028", // リザードシャーマン
