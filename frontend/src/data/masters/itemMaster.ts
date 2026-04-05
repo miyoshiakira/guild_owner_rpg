@@ -1,0 +1,59 @@
+import type { ItemType } from "../../types/game";
+
+/** 消耗品・アイテムのテンプレート定義（個数は initData / ゲーム内で管理） */
+export interface ItemTemplate {
+  id: string;
+  name: string;
+  type: ItemType;
+  effect: string;
+  sprite: string;
+}
+
+export const ITEM_MASTER: ItemTemplate[] = [
+  {
+    id: "item-001",
+    name: "回復ポーション",
+    type: "消耗品",
+    effect: "HPを30回復",
+    sprite: "🧪",
+  },
+  {
+    id: "item-002",
+    name: "魔力ポーション",
+    type: "消耗品",
+    effect: "MPを20回復",
+    sprite: "💙",
+  },
+  {
+    id: "item-003",
+    name: "ハイポーション",
+    type: "消耗品",
+    effect: "HPを80回復",
+    sprite: "🍶",
+  },
+  {
+    id: "item-004",
+    name: "どくけし草",
+    type: "消耗品",
+    effect: "毒を解除する",
+    sprite: "🌿",
+  },
+  {
+    id: "item-005",
+    name: "エリクサー",
+    type: "消耗品",
+    effect: "HPとMPを全回復",
+    sprite: "✨",
+  },
+  {
+    id: "item-006",
+    name: "フェニックスの羽",
+    type: "消耗品",
+    effect: "戦闘不能を回復しHPを半分回復",
+    sprite: "🪶",
+  },
+];
+
+export const ITEM_MAP: Record<string, ItemTemplate> = Object.fromEntries(
+  ITEM_MASTER.map((i) => [i.id, i])
+);

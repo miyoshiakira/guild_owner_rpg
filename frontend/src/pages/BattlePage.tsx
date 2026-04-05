@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box, Card, CardContent, Typography, Button, LinearProgress,
   Fade, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -10,6 +10,8 @@ import { SpriteImage } from "../components/SpriteImage";
 import { processBattleDrops } from "../utils/dropUtils";
 import { getExpToNextLevel } from "../data/expTable";
 import { ENEMY_MAP } from "../data/masters/enemyMaster";
+import { SKILL_MAP } from "../data/masters/skillMaster";
+import { getElementCoeff, getEffectivenessMsg } from "../data/masters/elementMaster";
 import BattleEndModal from "../components/BattleEndModal";
 
 interface StatBarProps {
@@ -31,8 +33,19 @@ function StatBar({ label, value, max, color }: StatBarProps) {
   );
 }
 
-type BattlePhase = "command" | "targeting" | "end";
+type BattlePhase = "command" | "skill_select" | "targeting" | "ally_targeting" | "end";
 type Command = "attack" | "skill" | "catch" | "run";
+
+/** スキルが回復系か判定（power=0 かつ mpCost>0） */
+function isHealSkill(skillName: string): boolean {
+  const s = SKILL_MAP[skillName];
+  return s !== undefined && s.power === 0 && s.mpCost > 0;
+}
+/** スキルが自己補助系か判定（power=0 かつ mpCost=0） */
+function isSelfSkill(skillName: string): boolean {
+  const s = SKILL_MAP[skillName];
+  return s !== undefined && s.power === 0 && s.mpCost === 0;
+}
 
 const COMMANDS: { cmd: Command; label: string; color: "error" | "primary" | "secondary" | "inherit" }[] = [
   { cmd: "attack", label: "⚔ こうげき", color: "error" },
@@ -76,6 +89,7 @@ export default function BattlePage() {
   );
   const [activeAllyIdx, setActiveAllyIdx] = useState(0);
   const [pendingCmd, setPendingCmd] = useState<Command | null>(null);
+  const [pendingSkillName, setPendingSkillName] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>(["バトル開始！"]);
   const [phase, setPhase] = useState<BattlePhase>("command");
   const [showResult, setShowResult] = useState(false);
@@ -83,11 +97,15 @@ export default function BattlePage() {
     victory: boolean;
     endReason: BattleEndReason;
     rewards?: BattleRewards;
-  }>({ victory: false, endReason: "defeat" });
+    finalStats: Array<{ monsterId: string; hp: number; mp: number }>;
+  }>({ victory: false, endReason: "defeat", finalStats: [] });
 
   // 戦闘終了シグナル: null = 戦闘中, それ以外 = 結果を処理待ち
   const [battleEndSignal, setBattleEndSignal] = useState<BattleEndSignal | null>(null);
   const [runConfirmOpen, setRunConfirmOpen] = useState(false);
+  const [isAutoMode, setIsAutoMode] = useState(false);
+  // オートバトル用: レンダーごとに最新クロージャで上書きし、useEffect から呼び出す
+  const executeAutoTurnRef = useRef<(() => void) | null>(null);
 
   // ── 戦闘終了シグナルを検知してモーダルを開く ─────────────────────────
   // useEffect で処理することで、state が完全にコミットされた後に実行される
@@ -97,7 +115,11 @@ export default function BattlePage() {
     const { reason, finalAllies } = battleEndSignal;
 
     if (reason !== "victory") {
-      setBattleResult({ victory: false, endReason: reason });
+      setBattleResult({
+        victory: false,
+        endReason: reason,
+        finalStats: finalAllies.map((a) => ({ monsterId: a.id, hp: a.hp, mp: a.mp })),
+      });
       setShowResult(true);
       return;
     }
@@ -140,9 +162,19 @@ export default function BattlePage() {
       victory: true,
       endReason: "victory",
       rewards: { gold: enemyTotalGold, exp: enemyTotalExp, materials, levelUps, monsterExpUpdates },
+      finalStats: finalAllies.map((a) => ({ monsterId: a.id, hp: a.hp, mp: a.mp })),
     });
     setShowResult(true);
   }, [battleEndSignal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── オートバトル: command フェーズになったら自動でアクションを実行 ──────
+  useEffect(() => {
+    if (!isAutoMode || phase !== "command") return;
+    const timer = setTimeout(() => {
+      executeAutoTurnRef.current?.();
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [isAutoMode, phase, activeAllyIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 以下は hooks 終了後のロジック ──────────────────────────────────────
   if (!battleState || partyMonsters.length === 0) {
@@ -154,6 +186,43 @@ export default function BattlePage() {
     if (e.hp > 0) acc.push(i);
     return acc;
   }, []);
+
+  // オートバトル用アクション（レンダーごとに最新クロージャで更新）
+  // useEffect より後で定義された関数を安全に呼び出すための ref パターン
+  executeAutoTurnRef.current = () => {
+    const ally = allies[activeAllyIdx];
+    if (!ally || ally.hp <= 0 || aliveEnemyIdxs.length === 0) return;
+
+    // HP50%以下の味方を優先回復
+    const injuredEntry = allies
+      .map((a, i) => ({ a, i }))
+      .filter(({ a }) => a.hp > 0 && a.hp / a.maxHp < 0.5)
+      .sort((x, y) => x.a.hp / x.a.maxHp - y.a.hp / y.a.maxHp)[0];
+
+    if (injuredEntry) {
+      const healSk = ally.skills.find(
+        (sk) => isHealSkill(sk) && ally.mp >= (SKILL_MAP[sk]?.mpCost ?? 0)
+      );
+      if (healSk) {
+        executeHeal(healSk, injuredEntry.i);
+        return;
+      }
+    }
+
+    // 攻撃スキルまたは通常攻撃
+    const targetIdx = aliveEnemyIdxs[Math.floor(Math.random() * aliveEnemyIdxs.length)]!;
+    const attackSkills = ally.skills.filter((sk) => {
+      const s = SKILL_MAP[sk];
+      return s && s.power > 0 && ally.mp >= s.mpCost;
+    });
+
+    if (attackSkills.length > 0 && Math.random() < 0.6) {
+      const sk = attackSkills[Math.floor(Math.random() * attackSkills.length)]!;
+      executeAction("skill", targetIdx, sk);
+    } else {
+      executeAction("attack", targetIdx);
+    }
+  };
 
   const batchLog = (msgs: string[]) => {
     if (msgs.length === 0) return;
@@ -227,8 +296,10 @@ export default function BattlePage() {
     }
   };
 
-  const executeAction = (cmd: Command, targetEnemyIdx: number) => {
+  /** 攻撃・捕獲など敵を対象にするアクション */
+  const executeAction = (cmd: Command, targetEnemyIdx: number, selectedSkill?: string) => {
     setPendingCmd(null);
+    setPendingSkillName(null);
     const newEnemies = enemies.map((e) => ({ ...e }));
     const newAllies = allies.map((a) => ({ ...a }));
     const msgs: string[] = [];
@@ -236,15 +307,30 @@ export default function BattlePage() {
     const target = newEnemies[targetEnemyIdx]!;
 
     if (cmd === "attack") {
-      const dmg = Math.max(1, ally.atk - target.def / 2 + Math.floor(Math.random() * 6));
+      // 装備武器の属性を取得
+      const weaponElem = state.equipment.find((e) => e.id === ally.equipped.weapon)?.element;
+      const elemCoeff = getElementCoeff(weaponElem, target.type);
+      const base = ally.atk - target.def / 2 + Math.floor(Math.random() * 6);
+      const dmg = Math.max(1, Math.round(base * elemCoeff));
       target.hp = Math.max(0, target.hp - dmg);
       msgs.push(`${ally.name}の攻撃！ ${target.name}に${dmg}ダメージ！`);
+      const eMsg = getEffectivenessMsg(elemCoeff);
+      if (eMsg) msgs.push(eMsg);
       if (target.hp <= 0) msgs.push(`${target.name}を倒した！`);
     } else if (cmd === "skill") {
-      const skill = ally.skills[1] ?? ally.skills[0] ?? "たいあたり";
-      const dmg = Math.floor(Math.max(1, ally.atk * 1.5 - target.def / 2 + Math.floor(Math.random() * 8)));
+      const skillName = selectedSkill ?? ally.skills[0] ?? "たいあたり";
+      const skillData = SKILL_MAP[skillName];
+      const mpCost = skillData?.mpCost ?? 0;
+      const skillPower = skillData?.power ?? 75;
+      ally.mp = Math.max(0, ally.mp - mpCost);
+      const multiplier = skillPower / 75;
+      const elemCoeff = getElementCoeff(skillData?.element, target.type);
+      const base = ally.atk - target.def / 2 + Math.floor(Math.random() * 6);
+      const dmg = Math.max(1, Math.floor(base * multiplier * elemCoeff));
       target.hp = Math.max(0, target.hp - dmg);
-      msgs.push(`${ally.name}は${skill}を使った！ ${target.name}に${dmg}ダメージ！`);
+      msgs.push(`${ally.name}は${skillName}を使った！ ${target.name}に${dmg}ダメージ！`);
+      const eMsg = getEffectivenessMsg(elemCoeff);
+      if (eMsg) msgs.push(eMsg);
       if (target.hp <= 0) msgs.push(`${target.name}を倒した！`);
     } else if (cmd === "catch") {
       // スカウト確率: 捕獲率 × (使用者ATK / (使用者ATK + 相手DEF)) × 2 (5%〜90% にクランプ)
@@ -293,10 +379,39 @@ export default function BattlePage() {
     advanceTurn(newEnemies, newAllies, msgs, activeAllyIdx);
   };
 
+  /** 回復スキルを味方に使用 */
+  const executeHeal = (skillName: string, targetAllyIdx: number) => {
+    setPendingSkillName(null);
+    const newEnemies = enemies.map((e) => ({ ...e }));
+    const newAllies = allies.map((a) => ({ ...a }));
+    const msgs: string[] = [];
+    const caster = newAllies[activeAllyIdx]!;
+    const target = newAllies[targetAllyIdx]!;
+    const skillData = SKILL_MAP[skillName];
+    const mpCost = skillData?.mpCost ?? 0;
+    caster.mp = Math.max(0, caster.mp - mpCost);
+    const healAmt = Math.max(1, Math.floor(20 + caster.level * 5));
+    target.hp = Math.min(target.maxHp, target.hp + healAmt);
+    msgs.push(`${caster.name}は${skillName}を使った！ ${target.name}のHPが${healAmt}回復した！`);
+    advanceTurn(newEnemies, newAllies, msgs, activeAllyIdx);
+  };
+
+  /** 自己補助スキル（威力0・MP0）を即時発動 */
+  const executeSelfSkill = (skillName: string) => {
+    setPendingSkillName(null);
+    const newAllies = allies.map((a) => ({ ...a }));
+    const msgs = [`${newAllies[activeAllyIdx]!.name}は${skillName}を使った！`];
+    advanceTurn(enemies.map((e) => ({ ...e })), newAllies, msgs, activeAllyIdx);
+  };
+
   const handleCommand = (cmd: Command) => {
     if (phase !== "command") return;
     if (cmd === "run") {
       setRunConfirmOpen(true);
+      return;
+    }
+    if (cmd === "skill") {
+      setPhase("skill_select");
       return;
     }
     if (aliveEnemyIdxs.length === 1) {
@@ -307,9 +422,40 @@ export default function BattlePage() {
     }
   };
 
+  /** スキル選択後の処理 */
+  const handleSkillSelect = (skillName: string) => {
+    const skill = SKILL_MAP[skillName];
+    const ally = allies[activeAllyIdx]!;
+    if (skill && ally.mp < skill.mpCost) {
+      batchLog([`MPが足りない！`]);
+      return;
+    }
+    setPendingSkillName(skillName);
+    if (isHealSkill(skillName)) {
+      setPhase("ally_targeting");
+    } else if (isSelfSkill(skillName)) {
+      executeSelfSkill(skillName);
+    } else {
+      // 攻撃スキル
+      if (aliveEnemyIdxs.length === 1) {
+        executeAction("skill", aliveEnemyIdxs[0]!, skillName);
+      } else {
+        setPhase("targeting");
+      }
+    }
+  };
+
   const handleTargetSelect = (enemyIdx: number) => {
-    if (!pendingCmd) return;
-    executeAction(pendingCmd, enemyIdx);
+    if (pendingSkillName) {
+      executeAction("skill", enemyIdx, pendingSkillName);
+    } else if (pendingCmd) {
+      executeAction(pendingCmd, enemyIdx);
+    }
+  };
+
+  const handleAllyTargetSelect = (allyIdx: number) => {
+    if (!pendingSkillName) return;
+    executeHeal(pendingSkillName, allyIdx);
   };
 
   const activeAlly = allies[activeAllyIdx];
@@ -344,7 +490,11 @@ export default function BattlePage() {
               敵 {aliveEnemyIdxs.length}/{enemies.length}
             </Typography>
             <Box className="battle-cards-wrap" sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
-              {enemies.map((enemy, i) => (
+              {enemies.map((enemy, i) => {
+                const scoutPct = activeAlly
+                  ? Math.round(Math.min(0.9, Math.max(0.05, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2)) * 100)
+                  : Math.round(enemy.catchRate * 100);
+                return (
                 <Card key={`${enemy.id}-${i}`} style={{ ["--card-delay" as string]: `${i * 70}ms` }} sx={{
                   bgcolor: enemy.hp <= 0 ? "rgba(80,80,80,0.1)" : "rgba(244,67,54,0.1)",
                   border: `1px solid ${enemy.hp <= 0 ? "rgba(80,80,80,0.2)" : "rgba(244,67,54,0.4)"}`,
@@ -357,16 +507,22 @@ export default function BattlePage() {
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
                         <SpriteImage sprite={enemy.sprite} size={36} alt={enemy.name} />
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
-                            {enemy.name}
-                          </Typography>
+                          <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+                            <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                              {enemy.name}
+                            </Typography>
+                            <Typography sx={{ fontSize: 9, color: "secondary.light", fontWeight: 600, flexShrink: 0 }}>
+                              🥚{scoutPct}%
+                            </Typography>
+                          </Box>
                           <Typography sx={{ fontSize: 10 }} color="text.secondary">Lv.{enemy.level}</Typography>
                         </Box>
                       </Box>
                       <StatBar label="HP" value={enemy.hp} max={enemy.maxHp} color="error" />
                     </CardContent>
                   </Card>
-              ))}
+                );
+              })}
             </Box>
           </Box>
 
@@ -431,12 +587,62 @@ export default function BattlePage() {
           </CardContent>
         </Card>
 
-        {/* コマンド / ターゲット選択 */}
+        {/* コマンド / スキル選択 / ターゲット選択 */}
         <Box sx={{ flexShrink: 0 }}>
-          {phase === "targeting" ? (
+
+          {/* ── スキル選択 ── */}
+          {phase === "skill_select" && (() => {
+            const ally = allies[activeAllyIdx]!;
+            return (
+              <>
+                <Typography variant="caption" color="primary.main" sx={{ mb: 0.5, display: "block" }}>
+                  ✨ {ally.name} のスキル
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                  {ally.skills.map((sk) => {
+                    const skill = SKILL_MAP[sk];
+                    const noMp = skill ? ally.mp < skill.mpCost : false;
+                    return (
+                      <Button key={sk} variant="outlined" color="primary" fullWidth size="small"
+                        disabled={noMp}
+                        onClick={() => handleSkillSelect(sk)}
+                        sx={{ display: "flex", justifyContent: "space-between", px: 1.5, py: 0.75 }}>
+                        <Typography component="span" sx={{ fontSize: 12, fontWeight: 700 }}>{sk}</Typography>
+                        <Box sx={{ display: "flex", gap: 1.5 }}>
+                          {skill && skill.power > 0 && (
+                            <Typography component="span" sx={{ fontSize: 10, color: "error.light" }}>
+                              威力{skill.power}
+                            </Typography>
+                          )}
+                          {skill && skill.mpCost > 0 && (
+                            <Typography component="span"
+                              sx={{ fontSize: 10, color: noMp ? "error.main" : "primary.light" }}>
+                              MP{skill.mpCost}
+                            </Typography>
+                          )}
+                          {skill && skill.power === 0 && skill.mpCost === 0 && (
+                            <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
+                              補助
+                            </Typography>
+                          )}
+                        </Box>
+                      </Button>
+                    );
+                  })}
+                  <Button variant="text" color="inherit" fullWidth size="small"
+                    onClick={() => setPhase("command")}>
+                    戻る
+                  </Button>
+                </Box>
+              </>
+            );
+          })()}
+
+          {/* ── 敵ターゲット選択 ── */}
+          {phase === "targeting" && (
             <>
               <Typography variant="caption" color="warning.main" sx={{ mb: 0.5, display: "block" }}>
-                ターゲットを選択
+                {pendingSkillName ? `${pendingSkillName} — 対象を選択` : "ターゲットを選択"}
               </Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: aliveEnemyIdxs.length === 1 ? "1fr" : "1fr 1fr", gap: 1 }}>
                 {aliveEnemyIdxs.map((i) => {
@@ -445,7 +651,8 @@ export default function BattlePage() {
                     ? Math.min(0.9, Math.max(0.05, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2))
                     : null;
                   return (
-                    <Button variant="outlined" color="error" fullWidth size="small" onClick={() => handleTargetSelect(i)} key={i}
+                    <Button variant="outlined" color="error" fullWidth size="small"
+                      onClick={() => handleTargetSelect(i)} key={i}
                       sx={{ flexDirection: "column", lineHeight: 1.3, py: 0.75 }}>
                       <span>{enemy.name}</span>
                       {scoutRate !== null && (
@@ -457,24 +664,69 @@ export default function BattlePage() {
                   );
                 })}
                 <Button variant="text" color="inherit" fullWidth size="small"
-                  onClick={() => { setPendingCmd(null); setPhase("command"); }}>
+                  onClick={() => {
+                    setPendingCmd(null);
+                    setPendingSkillName(null);
+                    setPhase(pendingSkillName ? "skill_select" : "command");
+                  }}>
                   戻る
                 </Button>
               </Box>
             </>
-          ) : (
+          )}
+
+          {/* ── 味方ターゲット選択（回復スキル用） ── */}
+          {phase === "ally_targeting" && (
             <>
               <Typography variant="caption" color="success.main" sx={{ mb: 0.5, display: "block" }}>
-                {activeAlly?.name} のターン
+                {pendingSkillName} — 対象を選択
               </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                {allies.map((ally, i) =>
+                  ally.hp > 0 ? (
+                    <Button key={ally.id} variant="outlined" color="success" fullWidth size="small"
+                      onClick={() => handleAllyTargetSelect(i)}
+                      sx={{ display: "flex", justifyContent: "space-between", px: 1.5, py: 0.75 }}>
+                      <Typography component="span" sx={{ fontSize: 12 }}>{ally.name}</Typography>
+                      <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
+                        HP {ally.hp}/{ally.maxHp}
+                      </Typography>
+                    </Button>
+                  ) : null
+                )}
+                <Button variant="text" color="inherit" fullWidth size="small"
+                  onClick={() => { setPendingSkillName(null); setPhase("skill_select"); }}>
+                  戻る
+                </Button>
+              </Box>
+            </>
+          )}
+
+          {/* ── コマンド選択 ── */}
+          {phase === "command" && (
+            <>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+                <Typography variant="caption" color="success.main">
+                  {activeAlly?.name} のターン
+                </Typography>
+                <Button
+                  size="small"
+                  variant={isAutoMode ? "contained" : "outlined"}
+                  color={isAutoMode ? "warning" : "inherit"}
+                  onClick={() => setIsAutoMode((prev) => !prev)}
+                  sx={{ fontSize: 10, py: 0.3, px: 1, minWidth: 0 }}
+                >
+                  {isAutoMode ? "🤖 オートON" : "🤖 オートOFF"}
+                </Button>
+              </Box>
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                 {COMMANDS.map(({ cmd, label, color }) => (
                   <Button
-                    variant={cmd === "attack" ? "contained" : cmd === "skill" ? "contained" : "outlined"}
+                    variant={cmd === "attack" || cmd === "skill" ? "contained" : "outlined"}
                     color={color}
                     fullWidth
+                    disabled={isAutoMode}
                     onClick={() => handleCommand(cmd)}
-                    disabled={phase !== "command"}
                     sx={{ py: 1 }}
                     key={cmd}
                   >
@@ -484,6 +736,7 @@ export default function BattlePage() {
               </Box>
             </>
           )}
+
         </Box>
 
       </Box>
@@ -539,6 +792,10 @@ export default function BattlePage() {
         rewards={battleResult.rewards}
         onClose={() => {
           setShowResult(false);
+          // 戦闘中の HP/MP 変化を Store へ書き戻す（回復なし）
+          if (battleResult.finalStats.length > 0) {
+            dispatch({ type: "SYNC_MONSTER_STATS", payload: battleResult.finalStats });
+          }
           if (battleResult.victory && battleResult.rewards) {
             dispatch({ type: "APPLY_BATTLE_REWARDS", payload: battleResult.rewards });
           }

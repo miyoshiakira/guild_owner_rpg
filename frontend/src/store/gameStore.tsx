@@ -1,19 +1,20 @@
 import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode, type Dispatch } from "react";
 import { saveGameData, loadGameData, hasSaveData } from "../db/saveService";
-import { PLAYER, MONSTERS, ITEMS, EQUIPMENT } from "../data/testData";
+import { INIT_PLAYER, INIT_MONSTERS, INIT_ITEMS, INIT_EQUIPMENT } from "../data/initData";
 import { getExpToNextLevel } from "../data/expTable";
 import type { GameState, GameAction, EquipSlot } from "../types/game";
 import type { CraftRecipe } from "../types/masters";
 
 const initialState: GameState = {
-  player: { ...PLAYER },
-  monsters: MONSTERS.map((m) => ({ ...m, equipped: { ...m.equipped } })),
-  equipment: EQUIPMENT.map((e) => ({ ...e })),
-  items: [...ITEMS],
+  player: { ...INIT_PLAYER },
+  monsters: INIT_MONSTERS.map((m) => ({ ...m, equipped: { ...m.equipped } })),
+  equipment: INIT_EQUIPMENT.map((e) => ({ ...e })),
+  items: [...INIT_ITEMS],
   materials: {}, // 素材アイテムの所持数
   scene: "login",
   notification: null,
   battleState: null,
+  visitedMapIds: ["map-001"], // 初期マップは訪問済み
 };
 
 function reducer(state: GameState, action: GameAction): GameState {
@@ -81,14 +82,15 @@ function reducer(state: GameState, action: GameAction): GameState {
     }
 
     case "LOAD_SAVE": {
-      const { player, monsters, equipment, items, materials } = action.payload;
+      const { player, monsters, equipment, items, materials, visitedMapIds } = action.payload;
       return {
         ...state,
-        ...(player    ? { player }    : {}),
-        ...(monsters  ? { monsters }  : {}),
-        ...(equipment ? { equipment } : {}),
-        ...(items     ? { items }     : {}),
-        ...(materials ? { materials } : {}),
+        ...(player         ? { player }         : {}),
+        ...(monsters       ? { monsters }       : {}),
+        ...(equipment      ? { equipment }      : {}),
+        ...(items          ? { items }          : {}),
+        ...(materials      ? { materials }      : {}),
+        ...(visitedMapIds  ? { visitedMapIds }  : {}),
       };
     }
 
@@ -269,16 +271,44 @@ function reducer(state: GameState, action: GameAction): GameState {
       return { ...state, monsters: result };
     }
 
+    case "VISIT_MAP": {
+      const mapId = action.payload;
+      if (state.visitedMapIds.includes(mapId)) return state;
+      return { ...state, visitedMapIds: [...state.visitedMapIds, mapId] };
+    }
+
+    case "SYNC_MONSTER_STATS": {
+      const statMap = new Map(action.payload.map((s) => [s.monsterId, s]));
+      return {
+        ...state,
+        monsters: state.monsters.map((m) => {
+          const s = statMap.get(m.id);
+          if (!s) return m;
+          return { ...m, hp: s.hp, mp: s.mp };
+        }),
+      };
+    }
+
+    case "HEAL_PARTY": {
+      return {
+        ...state,
+        monsters: state.monsters.map((m) =>
+          m.isParty ? { ...m, hp: m.maxHp, mp: m.maxMp } : m
+        ),
+      };
+    }
+
     case "RESET_GAME": {
       return {
-        player: { ...PLAYER },
-        monsters: MONSTERS.map((m) => ({ ...m, equipped: { ...m.equipped } })),
-        equipment: EQUIPMENT.map((e) => ({ ...e })),
-        items: [...ITEMS],
+        player: { ...INIT_PLAYER },
+        monsters: INIT_MONSTERS.map((m) => ({ ...m, equipped: { ...m.equipped } })),
+        equipment: INIT_EQUIPMENT.map((e) => ({ ...e })),
+        items: [...INIT_ITEMS],
         materials: {},
         scene: "login",
         notification: null,
         battleState: null,
+        visitedMapIds: ["map-001"],
       };
     }
 
@@ -310,11 +340,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
           dispatch({
             type: "LOAD_SAVE",
             payload: {
-              ...(savedData.player    ? { player:    savedData.player }    : {}),
-              ...(savedData.monsters  ? { monsters:  savedData.monsters }  : {}),
-              ...(savedData.equipment ? { equipment: savedData.equipment } : {}),
-              ...(savedData.items     ? { items:     savedData.items }     : {}),
-              ...(savedData.materials ? { materials: savedData.materials } : {}),
+              ...(savedData.player        ? { player:        savedData.player }        : {}),
+              ...(savedData.monsters      ? { monsters:      savedData.monsters }      : {}),
+              ...(savedData.equipment     ? { equipment:     savedData.equipment }     : {}),
+              ...(savedData.items         ? { items:         savedData.items }         : {}),
+              ...(savedData.materials     ? { materials:     savedData.materials }     : {}),
+              ...(savedData.visitedMapIds ? { visitedMapIds: savedData.visitedMapIds } : {}),
             },
           });
         }
@@ -339,13 +370,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
         equipment: state.equipment,
         items: state.items,
         materials: state.materials,
+        visitedMapIds: state.visitedMapIds,
       });
     }, 1500);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.scene]);
+  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.visitedMapIds, state.scene]);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>

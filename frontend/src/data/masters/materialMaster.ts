@@ -32,6 +32,12 @@ export const MATERIAL_MASTER: MaterialItem[] = [
   { id: "mat-026", name: "竜の鱗",          emoji: "🐉", description: "竜の棲み処に棲む古竜の体鱗。炎を帯び非常に硬い" },
   { id: "mat-027", name: "氷晶石",          emoji: "💎", description: "氷の魔窟の最深部に結晶化した純粋な氷の石" },
   { id: "mat-028", name: "炎玉",            emoji: "🟠", description: "火山帯の竜が体内で錬成した炎のエネルギーの塊" },
+  // ── 新エリア素材 ──
+  { id: "mat-029", name: "深海珊瑚",        emoji: "🪸", description: "深海の底に育つ神秘の珊瑚。深い蒼光を放つ" },
+  { id: "mat-030", name: "聖光石",          emoji: "💛", description: "光の聖域に宿る純粋な光のエネルギーが凝固した石" },
+  { id: "mat-031", name: "魔神の結晶",      emoji: "🖤", description: "闇の神殿の奥底に漂う禍々しい魔力の結晶" },
+  { id: "mat-032", name: "古代の宝珠",      emoji: "🏺", description: "古代神殿の最深部に安置されていた神秘の宝珠" },
+  { id: "mat-033", name: "神聖氷晶石",      emoji: "❄️", description: "氷雪神殿の祭壇に生成された神聖な氷の結晶" },
 ];
 
 /** id → MaterialItem の引きマップ */

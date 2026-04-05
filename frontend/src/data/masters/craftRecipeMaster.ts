@@ -1,17 +1,29 @@
-import type { CraftRecipe } from "../../types/masters";
+import type { CraftRecipe, CraftResultEquipment } from "../../types/masters";
 import { getEquipmentById } from "./equipmentMaster";
+
+/**
+ * equipmentMaster のエントリを CraftResultEquipment に変換するヘルパー。
+ * Equipment 型にある id / equippedTo はクラフト結果テンプレートには不要なため除外し、
+ * type: "equipment" を付与する。
+ */
+function equipResult(masterId: string): CraftResultEquipment {
+  const eq = getEquipmentById(masterId);
+  if (!eq) throw new Error(`craftRecipeMaster: equipmentMaster に "${masterId}" が存在しません`);
+  const { id: _id, equippedTo: _equippedTo, ...rest } = eq;
+  return { type: "equipment", ...rest };
+}
 
 export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
   // === 武器レシピ ===
   {
     id: "craft-001",
-    name: "石の剣", // 装備名に合わせ「骨」から「石」へ変更
+    name: "石の剣",
     description: "硬い骨や石を削って作った粗末な剣",
     emoji: "🗡️",
     ingredients: [
       { materialId: "mat-004", qty: 2 }, // 硬い骨 x2
     ],
-    result: getEquipmentById("eq-001"),
+    result: equipResult("eq-001"),
     resultQty: 1,
   },
   {
@@ -23,7 +35,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-006", qty: 1 }, // 魔力の結晶 x1
       { materialId: "mat-004", qty: 1 }, // 硬い骨 x1
     ],
-    result: getEquipmentById("eq-002"),
+    result: equipResult("eq-002"),
     resultQty: 1,
   },
 
@@ -36,7 +48,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
     ingredients: [
       { materialId: "mat-003", qty: 2 }, // 獣の毛皮 x2
     ],
-    result: getEquipmentById("eq-003"),
+    result: equipResult("eq-003"),
     resultQty: 1,
   },
   {
@@ -48,7 +60,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-001", qty: 3 }, // スライムゼリー x3
       { materialId: "mat-003", qty: 1 }, // 獣の毛皮 x1
     ],
-    result: getEquipmentById("eq-004"),
+    result: equipResult("eq-004"),
     resultQty: 1,
   },
 
@@ -61,23 +73,23 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
     ingredients: [
       { materialId: "mat-002", qty: 1 }, // スライムコア x1
     ],
-    result: getEquipmentById("eq-005"),
+    result: equipResult("eq-005"),
     resultQty: 1,
   },
   {
     id: "craft-006",
-    name: "魔法の帽子", // 「アミュレット」から装備名に合わせて修正
+    name: "魔法の帽子",
     description: "魔法の粉を練り込んだ不思議な帽子",
     emoji: "🎩",
     ingredients: [
       { materialId: "mat-005", qty: 2 }, // 魔法の粉 x2
       { materialId: "mat-002", qty: 1 }, // スライムコア x1
     ],
-    result: getEquipmentById("eq-014"), // 魔法の帽子のID
+    result: equipResult("eq-014"),
     resultQty: 1,
   },
 
-  // === 消耗品レシピ (変更なし) ===
+  // === 消耗品レシピ ===
   {
     id: "craft-007",
     name: "回復ポーション",
@@ -86,7 +98,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
     ingredients: [{ materialId: "mat-001", qty: 2 }],
     result: {
       type: "item",
-      id: "potion-001",
+      id: "item-001",        // itemMaster / initData の ID と一致させる
       name: "回復ポーション",
       itemType: "消耗品",
       effect: "HPを30回復",
@@ -95,65 +107,65 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
     resultQty: 2,
   },
 
-  // === 中級・上級装備レシピ (修正版) ===
+  // === 中級・上級装備レシピ ===
   {
     id: "craft-009",
-    name: "トライデント", // 「鱗の槍」から修正
+    name: "トライデント",
     description: "魚や爬虫類の鱗を束ねて作った軽量な槍",
     emoji: "🔱",
     ingredients: [
       { materialId: "mat-012", qty: 3 },
       { materialId: "mat-007", qty: 1 },
     ],
-    result: getEquipmentById("eq-010"),
+    result: equipResult("eq-010"),
     resultQty: 1,
   },
   {
     id: "craft-010",
-    name: "鉄の剣", // 「炎剣」から修正
+    name: "鉄の剣",
     description: "鉄の欠片を融合させた高威力の剣",
     emoji: "⚔️",
     ingredients: [
       { materialId: "mat-009", qty: 2 },
       { materialId: "mat-013", qty: 1 },
     ],
-    result: getEquipmentById("eq-008"),
+    result: equipResult("eq-008"),
     resultQty: 1,
   },
   {
     id: "craft-011",
-    name: "エルフの弓", // 「毒の短剣」から修正
+    name: "エルフの弓",
     description: "しなやかな木材と魔力を組み合わせた弓",
     emoji: "🏹",
     ingredients: [
       { materialId: "mat-015", qty: 2 },
       { materialId: "mat-007", qty: 1 },
     ],
-    result: getEquipmentById("eq-015"),
+    result: equipResult("eq-015"),
     resultQty: 1,
   },
   {
     id: "craft-012",
-    name: "氷結晶の剣", // 「竜骨の大剣」から修正
+    name: "氷結晶の剣",
     description: "氷の結晶で鍛えた美しい剣",
     emoji: "🧊",
     ingredients: [
       { materialId: "mat-014", qty: 1 },
       { materialId: "mat-013", qty: 2 },
     ],
-    result: getEquipmentById("eq-018"),
+    result: equipResult("eq-018"),
     resultQty: 1,
   },
   {
     id: "craft-013",
-    name: "砂漠の服", // 「鱗の胸当て」から修正
+    name: "砂漠の服",
     description: "砂漠の過酷な環境に耐えるための服",
     emoji: "🏜️",
     ingredients: [
       { materialId: "mat-012", qty: 3 },
       { materialId: "mat-013", qty: 1 },
     ],
-    result: getEquipmentById("eq-011"),
+    result: equipResult("eq-011"),
     resultQty: 1,
   },
   {
@@ -164,19 +176,19 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
     ingredients: [
       { materialId: "mat-013", qty: 4 },
     ],
-    result: getEquipmentById("eq-009"),
+    result: equipResult("eq-009"),
     resultQty: 1,
   },
   {
     id: "craft-015",
-    name: "レザーアーマー", // 「炎の外套」から修正
+    name: "レザーアーマー",
     description: "獣の皮を幾重にも重ねた防御力の高い防具",
     emoji: "🦺",
     ingredients: [
       { materialId: "mat-016", qty: 2 },
       { materialId: "mat-003", qty: 1 },
     ],
-    result: getEquipmentById("eq-016"),
+    result: equipResult("eq-016"),
     resultQty: 1,
   },
   {
@@ -188,7 +200,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-020", qty: 2 },
       { materialId: "mat-013", qty: 1 },
     ],
-    result: getEquipmentById("eq-030"),
+    result: equipResult("eq-030"),
     resultQty: 1,
   },
 
@@ -202,7 +214,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-022", qty: 1 },
       { materialId: "mat-014", qty: 2 },
     ],
-    result: getEquipmentById("eq-032"),
+    result: equipResult("eq-032"),
     resultQty: 1,
   },
   {
@@ -214,7 +226,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-022", qty: 1 },
       { materialId: "mat-012", qty: 4 },
     ],
-    result: getEquipmentById("eq-033"),
+    result: equipResult("eq-033"),
     resultQty: 1,
   },
   {
@@ -226,7 +238,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-028", qty: 2 },
       { materialId: "mat-026", qty: 1 },
     ],
-    result: getEquipmentById("eq-035"),
+    result: equipResult("eq-035"),
     resultQty: 1,
   },
   {
@@ -238,7 +250,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-026", qty: 3 },
       { materialId: "mat-003", qty: 2 },
     ],
-    result: getEquipmentById("eq-036"),
+    result: equipResult("eq-036"),
     resultQty: 1,
   },
   {
@@ -250,7 +262,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-027", qty: 2 },
       { materialId: "mat-013", qty: 2 },
     ],
-    result: getEquipmentById("eq-037"),
+    result: equipResult("eq-037"),
     resultQty: 1,
   },
   {
@@ -262,7 +274,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-025", qty: 2 },
       { materialId: "mat-006", qty: 2 },
     ],
-    result: getEquipmentById("eq-039"),
+    result: equipResult("eq-039"),
     resultQty: 1,
   },
   {
@@ -274,7 +286,7 @@ export const CRAFT_RECIPE_MASTER: CraftRecipe[] = [
       { materialId: "mat-024", qty: 1 },
       { materialId: "mat-023", qty: 2 },
     ],
-    result: getEquipmentById("eq-041"),
+    result: equipResult("eq-041"),
     resultQty: 1,
   },
 ];

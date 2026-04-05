@@ -11,6 +11,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🗡️",
+    // 無属性
   },
   {
     id: "eq-002",
@@ -21,6 +22,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🪄",
+    element: "光" as const,
   },
   {
     id: "eq-003",
@@ -103,6 +105,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🔱",
+    element: "水" as const,
   },
   {
     id: "eq-011",
@@ -155,6 +158,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 3,
     sprite: "🏹",
+    element: "地" as const,
   },
   {
     id: "eq-016",
@@ -185,6 +189,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🧊",
+    element: "水" as const,
   },
 
   // === 高級装備品 ===
@@ -197,6 +202,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🔱",
+    element: "水" as const,
   },
   {
     id: "eq-020",
@@ -219,6 +225,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🗡️",
+    element: "地" as const,
   },
   {
     id: "eq-022",
@@ -289,6 +296,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🔮",
+    element: "光" as const,
   },
   {
     id: "eq-029",
@@ -319,6 +327,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "🌋",
+    element: "炎" as const,
   },
 
   // === 新エリア装備品 ===
@@ -331,6 +340,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 2,
     sprite: "🔱",
+    element: "水" as const,
   },
   {
     id: "eq-033",
@@ -361,6 +371,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 1,
     sprite: "🔥",
+    element: "炎" as const,
   },
   {
     id: "eq-036",
@@ -381,6 +392,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 3,
     sprite: "💎",
+    element: "水" as const,
   },
   {
     id: "eq-038",
@@ -401,6 +413,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 4,
     sprite: "🏹",
+    element: "光" as const,
   },
   {
     id: "eq-040",
@@ -421,6 +434,7 @@ export const EQUIPMENT_MASTER: Equipment[] = [
     defBonus: 0,
     spdBonus: 0,
     sprite: "😡",
+    element: "闇" as const,
   },
   {
     id: "eq-042",

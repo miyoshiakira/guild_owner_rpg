@@ -31,6 +31,7 @@ export interface Equipment {
   spdBonus: number;
   sprite: string;
   equippedTo: string | null; // monster id or null (= in storage)
+  element?: MonsterType;     // 武器属性 (主に weapon スロットで使用)
 }
 
 export interface Monster {
@@ -131,6 +132,7 @@ export interface GameState {
   scene: Scene;
   notification: Notification | null;
   battleState: BattleState | null;
+  visitedMapIds: string[];           // 訪問済みマップ ID 一覧
 }
 
 export type GameAction =
@@ -144,7 +146,7 @@ export type GameAction =
   | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
   | { type: "UNEQUIP"; payload: { equipmentId: string } }
   | { type: "ADD_EQUIPMENT"; payload: Equipment }
-  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials">> }
+  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials" | "visitedMapIds">> }
   | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
   | { type: "ADD_MATERIALS"; payload: Record<string, number> }
   | { type: "CRAFT"; payload: import("./masters").CraftRecipe }
@@ -152,4 +154,7 @@ export type GameAction =
   | { type: "LOAD_MONSTERS"; payload: Monster[] }
   | { type: "RESET_GAME" }
   | { type: "RENAME_MONSTER"; payload: { monsterId: string; name: string } }
-  | { type: "REORDER_MONSTERS"; payload: string[] };
+  | { type: "REORDER_MONSTERS"; payload: string[] }
+  | { type: "VISIT_MAP"; payload: string }
+  | { type: "SYNC_MONSTER_STATS"; payload: Array<{ monsterId: string; hp: number; mp: number }> }
+  | { type: "HEAL_PARTY" };

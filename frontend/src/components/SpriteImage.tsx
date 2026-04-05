@@ -1,7 +1,7 @@
-import { SPRITES } from "../data/sprites";
+import { getSpriteUrl } from "../data/sprites";
 
 interface SpriteImageProps {
-  /** testData の sprite フィールド値（例: "DefaultBoy.png"） */
+  /** monster.sprite / enemy.sprite のファイル名（例: "スライム.png"） */
   sprite: string;
   size?: number;
   alt?: string;
@@ -9,11 +9,9 @@ interface SpriteImageProps {
 
 /**
  * monster.sprite / enemy.sprite のファイル名を受け取り <img> をレンダリングする。
- * 対応画像が存在しない場合は何も表示しない。
  */
 export function SpriteImage({ sprite, size = 48, alt = "" }: SpriteImageProps) {
-  const src = SPRITES[sprite];
-  if (!src) return null;
+  const src = getSpriteUrl(sprite);
   return (
     <img
       src={src}

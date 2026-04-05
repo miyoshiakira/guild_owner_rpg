@@ -4,11 +4,12 @@ import { useGame } from "../store/gameStore";
 import {
   MAP_MASTER_MAP,
   MAP_TILE_COLORS,
-  MAP_TILE_SYMBOLS,
   MAP_TILE_NAMES,
   WALKABLE_TILES,
   DEFAULT_MAP_ID,
 } from "../data/masters/mapMaster";
+import { TILE_CHIP_POS, CHIP_SHEET_COLS, CHIP_SRC_SIZE } from "../data/map/mapChipConfig";
+import mapChipUrl from "../data/map/BaseMapChip.png";
 import { TOWN_MAP } from "../data/masters/townMaster";
 import type { MapMasterData } from "../data/masters/mapMaster";
 import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
@@ -238,37 +239,48 @@ function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
           row.map((tile, c) => {
             const isPlayer = playerPos.row === r && playerPos.col === c;
             const isPortal = tile === 9;
+            const chip = TILE_CHIP_POS[tile] ?? TILE_CHIP_POS[0]!;
+            const chipBgX = -(chip[1] * TILE_SIZE);
+            const chipBgY = -(chip[0] * TILE_SIZE);
+            const sheetDisplayW = CHIP_SHEET_COLS * TILE_SIZE; // スケール後シート幅
+            // 元シートの縦比率を保って高さを算出
+            const sheetDisplayH = Math.round((1000 / CHIP_SRC_SIZE) * TILE_SIZE);
             return (
               <Box
                 key={`${r}-${c}`}
                 sx={{
                   width: TILE_SIZE,
                   height: TILE_SIZE,
-                  bgcolor: isPlayer ? "rgba(255,215,64,0.18)" : MAP_TILE_COLORS[tile],
+                  backgroundImage: `url(${mapChipUrl})`,
+                  backgroundPosition: `${chipBgX}px ${chipBgY}px`,
+                  backgroundSize: `${sheetDisplayW}px ${sheetDisplayH}px`,
+                  backgroundRepeat: "no-repeat",
+                  imageRendering: "pixelated",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: tile === 2 || tile === 3 ? 22 : 20,
                   outline: isPlayer ? "2px solid #ffd740" : "none",
                   outlineOffset: "-2px",
                   boxSizing: "border-box",
-                  boxShadow: isPlayer ? "inset 0 0 12px rgba(255,215,64,0.25)" : "none",
+                  boxShadow: isPlayer
+                    ? "inset 0 0 14px rgba(255,215,64,0.5)"
+                    : "none",
                   animation: isPortal ? "portal-pulse 1.5s ease-in-out infinite" : "none",
-                  transition: "background-color 0.1s",
                 }}
               >
-                {isPlayer ? (
+                {isPlayer && (
                   <Box
                     component="span"
                     sx={{
                       display: "inline-block",
                       animation: "player-bounce 0.9s ease-in-out infinite",
                       lineHeight: 1,
+                      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))",
                     }}
                   >
                     🧑
                   </Box>
-                ) : MAP_TILE_SYMBOLS[tile]}
+                )}
               </Box>
             );
           })
@@ -280,7 +292,7 @@ function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
 
 // ── メインページ ──────────────────────────────────────────────────────────
 export default function FieldPage() {
-  const { dispatch } = useGame();
+  const { state, dispatch } = useGame();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -308,6 +320,11 @@ export default function FieldPage() {
   useEffect(() => { currentMapRef.current = currentMap; }, [currentMap]);
   useEffect(() => { playerPosRef.current = playerPos; }, [playerPos]);
   useEffect(() => { transitionPhaseRef.current = transitionPhase; }, [transitionPhase]);
+
+  // マップ入場時に訪問済みとして記録
+  useEffect(() => {
+    dispatch({ type: "VISIT_MAP", payload: currentMapId });
+  }, [currentMapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ロード
   useEffect(() => {
@@ -357,6 +374,16 @@ export default function FieldPage() {
     const t = setTimeout(() => setTransitionPhase("idle"), 420);
     return () => clearTimeout(t);
   }, [transitionPhase]);
+
+  // ワールドマップからワープ
+  const handleWarp = useCallback((mapId: string) => {
+    const mapData = MAP_MASTER_MAP[mapId];
+    if (!mapData) return;
+    setCurrentMapId(mapId);
+    setPlayerPos(mapData.defaultPos);
+    playerPosRef.current = mapData.defaultPos;
+    setShowWorldMap(false);
+  }, []);
 
   // 移動処理（ref ベースで stale closure を回避）
   const tryMove = useCallback((dr: number, dc: number) => {
@@ -587,7 +614,11 @@ export default function FieldPage() {
 
       {/* 町入るボタン */}
       {currentTile === 5 && currentTown && (
-        <TownEnterButton onEnterTown={() => setShowTownModal(true)} />
+        <TownEnterButton onEnterTown={() => {
+          dispatch({ type: "HEAL_PARTY" });
+          dispatch({ type: "NOTIFY", payload: { message: "🏥 仲間のHPとMPが全回復した！", severity: "success" } });
+          setShowTownModal(true);
+        }} />
       )}
 
       {/* ワールドマップモーダル */}
@@ -595,6 +626,8 @@ export default function FieldPage() {
         open={showWorldMap}
         onClose={() => setShowWorldMap(false)}
         currentMapId={currentMap.id}
+        visitedMapIds={state.visitedMapIds}
+        onWarp={handleWarp}
       />
     </Box>
   );

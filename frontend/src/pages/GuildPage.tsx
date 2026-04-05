@@ -33,6 +33,8 @@ import DragHandleIcon from "@mui/icons-material/DragHandle";
 import { useGame } from "../store/gameStore";
 import type { Equipment, EquipSlot, Monster } from "../types/game";
 import { SpriteImage } from "../components/SpriteImage";
+import { SKILL_MAP } from "../data/masters/skillMaster";
+import type { SkillMaster } from "../types/masters";
 
 // ===== 定数 =====
 const SLOT_META: Record<EquipSlot, { label: string; icon: string }> = {
@@ -403,6 +405,30 @@ const MonsterCell = memo(function MonsterCell({
         Lv.{monster.level}
       </Typography>
 
+      {/* HP/MPバー */}
+      <Box sx={{ width: "100%", px: 0.75, display: "flex", flexDirection: "column", gap: 0.35 }}>
+        <LinearProgress
+          variant="determinate"
+          value={monster.maxHp > 0 ? Math.min(100, (monster.hp / monster.maxHp) * 100) : 100}
+          sx={{
+            height: 3, borderRadius: 2,
+            bgcolor: "rgba(255,255,255,0.1)",
+            "& .MuiLinearProgress-bar": { bgcolor: "#ef5350", borderRadius: 2 },
+          }}
+        />
+        {monster.maxMp > 0 && (
+          <LinearProgress
+            variant="determinate"
+            value={Math.min(100, (monster.mp / monster.maxMp) * 100)}
+            sx={{
+              height: 3, borderRadius: 2,
+              bgcolor: "rgba(255,255,255,0.1)",
+              "& .MuiLinearProgress-bar": { bgcolor: "#42a5f5", borderRadius: 2 },
+            }}
+          />
+        )}
+      </Box>
+
       {/* 出撃チェックボックス */}
       <Box
         onClick={(e) => { e.stopPropagation(); onToggleParty(!monster.isParty); }}
@@ -427,13 +453,20 @@ const MonsterCell = memo(function MonsterCell({
 });
 
 // ===== 詳細画面 =====
-const STAT_ROWS = [
-  { icon: "❤️", label: "HP",  baseKey: "maxHp" as const,  bonusKey: null },
-  { icon: "💙", label: "MP",  baseKey: "maxMp" as const,  bonusKey: null },
-  { icon: "⚔️", label: "ATK", baseKey: "atk"   as const,  bonusKey: "atkBonus" as const },
-  { icon: "🛡️", label: "DEF", baseKey: "def"   as const,  bonusKey: "defBonus" as const },
-  { icon: "💨", label: "SPD", baseKey: "spd"   as const,  bonusKey: "spdBonus" as const },
-] as const;
+type StatRow = {
+  icon: string;
+  label: string;
+  baseKey: keyof Monster;
+  currentKey?: keyof Monster;
+  bonusKey?: "atkBonus" | "defBonus" | "spdBonus";
+};
+const STAT_ROWS: StatRow[] = [
+  { icon: "❤️", label: "HP",  baseKey: "maxHp", currentKey: "hp"  },
+  { icon: "💙", label: "MP",  baseKey: "maxMp", currentKey: "mp"  },
+  { icon: "⚔️", label: "ATK", baseKey: "atk",   bonusKey: "atkBonus" },
+  { icon: "🛡️", label: "DEF", baseKey: "def",   bonusKey: "defBonus" },
+  { icon: "💨", label: "SPD", baseKey: "spd",   bonusKey: "spdBonus" },
+];
 
 const MonsterDetail = memo(function MonsterDetail({
   monster,
@@ -453,6 +486,7 @@ const MonsterDetail = memo(function MonsterDetail({
   const [portraitOpen, setPortraitOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [skillDetail, setSkillDetail] = useState<SkillMaster | null>(null);
 
   const getEquipped = (slot: EquipSlot) => {
     const id = monster.equipped[slot];
@@ -529,9 +563,10 @@ const MonsterDetail = memo(function MonsterDetail({
           </Typography>
 
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 0 }}>
-            {STAT_ROWS.map(({ icon, label, baseKey, bonusKey }) => {
-              const base = monster[baseKey];
+            {STAT_ROWS.map(({ icon, label, baseKey, currentKey, bonusKey }) => {
+              const base = monster[baseKey] as number;
               const b = bonusKey ? bonus(bonusKey) : 0;
+              const current = currentKey != null ? monster[currentKey] as number : null;
               return (
                 <Box key={label} sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.45 }}>
                   <Typography sx={{ fontSize: 15, lineHeight: 1, width: 20, textAlign: "center", flexShrink: 0 }}>
@@ -540,11 +575,22 @@ const MonsterDetail = memo(function MonsterDetail({
                   <Typography variant="caption" color="text.secondary" sx={{ width: 30, fontSize: 11, flexShrink: 0 }}>
                     {label}
                   </Typography>
-                  <Typography variant="body2" fontWeight={700} sx={{ minWidth: 24 }}>
-                    {base + b}
-                  </Typography>
-                  {b > 0 && (
-                    <Typography variant="caption" color="success.main" sx={{ fontSize: 10 }}>+{b}</Typography>
+                  {current != null ? (
+                    <Typography variant="body2" fontWeight={700} sx={{ minWidth: 24, fontSize: 12 }}>
+                      <Box component="span" sx={{ color: current < base * 0.3 ? "error.main" : current < base * 0.7 ? "warning.main" : "inherit" }}>
+                        {current}
+                      </Box>
+                      <Box component="span" sx={{ color: "text.disabled", fontSize: 10 }}>/{base}</Box>
+                    </Typography>
+                  ) : (
+                    <>
+                      <Typography variant="body2" fontWeight={700} sx={{ minWidth: 24 }}>
+                        {base + b}
+                      </Typography>
+                      {b > 0 && (
+                        <Typography variant="caption" color="success.main" sx={{ fontSize: 10 }}>+{b}</Typography>
+                      )}
+                    </>
                   )}
                 </Box>
               );
@@ -576,9 +622,61 @@ const MonsterDetail = memo(function MonsterDetail({
               sx={{ height: 20, fontSize: 10 }} />
             {monster.skills.map((sk) => (
               <Chip key={sk} label={sk} size="small"
-                sx={{ height: 20, fontSize: 10, bgcolor: "rgba(124,77,255,0.15)", border: "1px solid rgba(124,77,255,0.3)" }} />
+                onClick={() => setSkillDetail(SKILL_MAP[sk] ?? { id: "", name: sk, power: 0, description: "詳細不明", mpCost: 0 })}
+                sx={{ height: 20, fontSize: 10, bgcolor: "rgba(124,77,255,0.15)", border: "1px solid rgba(124,77,255,0.3)", cursor: "pointer" }} />
             ))}
           </Box>
+
+          {/* スキル詳細モーダル */}
+          <Dialog
+            open={skillDetail !== null}
+            onClose={() => setSkillDetail(null)}
+            PaperProps={{ sx: { bgcolor: "background.paper", borderRadius: 2, minWidth: 260, maxWidth: 340 } }}
+          >
+            {skillDetail && (
+              <>
+                <DialogTitle sx={{ pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    bgcolor: "rgba(124,77,255,0.2)", border: "1px solid rgba(124,77,255,0.5)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, flexShrink: 0,
+                  }}>⚡</Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{skillDetail.name}</Typography>
+                </DialogTitle>
+                <DialogContent sx={{ pt: "0 !important" }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    {skillDetail.description}
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{
+                      flex: 1, textAlign: "center", py: 1, borderRadius: 1,
+                      bgcolor: skillDetail.power > 0 ? "rgba(244,67,54,0.12)" : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${skillDetail.power > 0 ? "rgba(244,67,54,0.3)" : "rgba(255,255,255,0.1)"}`,
+                    }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontSize: 10 }}>威力</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: skillDetail.power > 0 ? "error.light" : "text.disabled" }}>
+                        {skillDetail.power > 0 ? skillDetail.power : "—"}
+                      </Typography>
+                    </Box>
+                    <Box sx={{
+                      flex: 1, textAlign: "center", py: 1, borderRadius: 1,
+                      bgcolor: skillDetail.mpCost > 0 ? "rgba(33,150,243,0.12)" : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${skillDetail.mpCost > 0 ? "rgba(33,150,243,0.3)" : "rgba(255,255,255,0.1)"}`,
+                    }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontSize: 10 }}>消費MP</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: skillDetail.mpCost > 0 ? "info.light" : "text.disabled" }}>
+                        {skillDetail.mpCost > 0 ? skillDetail.mpCost : "—"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </DialogContent>
+                <DialogActions sx={{ pt: 0 }}>
+                  <Button size="small" onClick={() => setSkillDetail(null)}>閉じる</Button>
+                </DialogActions>
+              </>
+            )}
+          </Dialog>
         </CardContent>
       </Card>
 

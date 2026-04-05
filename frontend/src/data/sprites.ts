@@ -1,14 +1,18 @@
 /**
- * src/data/image/ 以下の PNG を Vite の glob インポートで一括取得し、
- * ファイル名 → 解決済み URL のマップとして公開する。
+ * public/data/image/ 以下の PNG を静的 URL で公開する。
  *
- * 使い方: SPRITES["DefaultBoy.png"]  → "/src/data/image/DefaultBoy.png" の解決URL
+ * 使い方: SPRITES["スライム.png"]  → "/data/image/スライム.png"
  */
-const modules = import.meta.glob<{ default: string }>("./image/*.png", { eager: true });
+export function getSpriteUrl(filename: string): string {
+  return `/data/image/${filename}`;
+}
 
-export const SPRITES: Record<string, string> = Object.fromEntries(
-  Object.entries(modules).map(([path, mod]) => [
-    path.split("/").pop()!, // "DefaultBoy.png" など
-    mod.default,
-  ])
-);
+// 後方互換用: SPRITES["スライム.png"] でアクセス可能な Proxy
+export const SPRITES: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get(_target, prop: string) {
+    return `/data/image/${prop}`;
+  },
+  has(_target, prop: string) {
+    return typeof prop === "string" && prop.endsWith(".png");
+  },
+});

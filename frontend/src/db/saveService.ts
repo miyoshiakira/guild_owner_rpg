@@ -15,6 +15,7 @@ export interface SavedGameData {
   materials: Record<string, number>;
   playerPos: PlayerPos;
   currentMapId: string;
+  visitedMapIds: string[];
 }
 
 /**

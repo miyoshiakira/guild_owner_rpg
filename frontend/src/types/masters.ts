@@ -1,5 +1,7 @@
 import type { MonsterType, EquipSlot, ItemType, DropEntry } from "./game";
 
+export type ElementType = MonsterType;
+
 // ===== 素材アイテム =====
 export interface MaterialItem {
   id: string;
@@ -44,6 +46,7 @@ export interface CraftResultEquipment {
   defBonus: number;
   spdBonus: number;
   sprite: string;
+  element?: MonsterType;
 }
 
 export interface CraftResultItem {
@@ -56,6 +59,16 @@ export interface CraftResultItem {
 }
 
 export type CraftResult = CraftResultEquipment | CraftResultItem;
+
+// ===== スキルマスタ =====
+export interface SkillMaster {
+  id: string;
+  name: string;
+  power: number;         // 威力（0 = ダメージなし / 状態異常・補助）
+  description: string;   // 説明文
+  mpCost: number;        // 消費MP
+  element?: MonsterType; // 属性 (なしは無属性物理)
+}
 
 export interface CraftRecipe {
   id: string;
