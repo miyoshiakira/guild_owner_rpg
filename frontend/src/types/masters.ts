@@ -68,6 +68,7 @@ export interface SkillMaster {
   description: string;   // 説明文
   mpCost: number;        // 消費MP
   element?: MonsterType; // 属性 (なしは無属性物理)
+  target?: "all";        // 全体攻撃フラグ
 }
 
 export interface CraftRecipe {

@@ -1043,7 +1043,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     reward: { exp: 92, gold: 74 },
     catchRate: 0.06,
     personality: "ずる賢い",
-    skills: ["光の壁", "聖光爆発", "幻惑の光"],
+    skills: ["光の壁", "聖光爆発", "幻惑の光", "ヒール"],
     drops: [
       { materialId: "mat-030", rate: 0.7, minQty: 1, maxQty: 3 },
       { materialId: "mat-013", rate: 0.4, minQty: 1, maxQty: 2 },
@@ -1186,7 +1186,7 @@ export const ENEMY_MASTER: EnemyMaster[] = [
     reward: { exp: 35, gold: 28 },
     catchRate: 0.18,
     personality: "おくびょう",
-    skills: ["みずしぶき", "水流ブレス", "氷の息"],
+    skills: ["みずしぶき", "水流ブレス", "氷の息", "癒しの水"],
     drops: [
       { materialId: "mat-001", rate: 0.5, minQty: 1, maxQty: 2 },
       { materialId: "mat-022", rate: 0.35, minQty: 1, maxQty: 1 },

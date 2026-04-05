@@ -46,6 +46,11 @@ function isSelfSkill(skillName: string): boolean {
   const s = SKILL_MAP[skillName];
   return s !== undefined && s.power === 0 && s.mpCost === 0;
 }
+/** スキルが全体攻撃か判定 */
+function isAllTargetSkill(skillName: string): boolean {
+  const s = SKILL_MAP[skillName];
+  return s !== undefined && s.target === "all" && s.power > 0;
+}
 
 const COMMANDS: { cmd: Command; label: string; color: "error" | "primary" | "secondary" | "inherit" }[] = [
   { cmd: "attack", label: "⚔ こうげき", color: "error" },
@@ -218,7 +223,11 @@ export default function BattlePage() {
 
     if (attackSkills.length > 0 && Math.random() < 0.6) {
       const sk = attackSkills[Math.floor(Math.random() * attackSkills.length)]!;
-      executeAction("skill", targetIdx, sk);
+      if (isAllTargetSkill(sk)) {
+        executeAllTarget(sk);
+      } else {
+        executeAction("skill", targetIdx, sk);
+      }
     } else {
       executeAction("attack", targetIdx);
     }
@@ -404,6 +413,33 @@ export default function BattlePage() {
     advanceTurn(enemies.map((e) => ({ ...e })), newAllies, msgs, activeAllyIdx);
   };
 
+  /** 全体攻撃スキルを全生存敵に使用 */
+  const executeAllTarget = (skillName: string) => {
+    setPendingCmd(null);
+    setPendingSkillName(null);
+    const newEnemies = enemies.map((e) => ({ ...e }));
+    const newAllies = allies.map((a) => ({ ...a }));
+    const msgs: string[] = [];
+    const ally = newAllies[activeAllyIdx]!;
+    const skillData = SKILL_MAP[skillName];
+    const mpCost = skillData?.mpCost ?? 0;
+    const skillPower = skillData?.power ?? 75;
+    ally.mp = Math.max(0, ally.mp - mpCost);
+    const multiplier = skillPower / 75;
+    msgs.push(`${ally.name}は${skillName}を使った！`);
+    newEnemies.forEach((target) => {
+      if (target.hp <= 0) return;
+      const elemCoeff = getElementCoeff(skillData?.element, target.type);
+      const base = ally.atk - target.def / 2 + Math.floor(Math.random() * 6);
+      const dmg = Math.max(1, Math.floor(base * multiplier * elemCoeff));
+      target.hp = Math.max(0, target.hp - dmg);
+      const eMsg = getEffectivenessMsg(elemCoeff);
+      msgs.push(`${target.name}に${dmg}ダメージ！${eMsg ? ` ${eMsg}` : ""}`);
+      if (target.hp <= 0) msgs.push(`${target.name}を倒した！`);
+    });
+    advanceTurn(newEnemies, newAllies, msgs, activeAllyIdx);
+  };
+
   const handleCommand = (cmd: Command) => {
     if (phase !== "command") return;
     if (cmd === "run") {
@@ -435,8 +471,10 @@ export default function BattlePage() {
       setPhase("ally_targeting");
     } else if (isSelfSkill(skillName)) {
       executeSelfSkill(skillName);
+    } else if (isAllTargetSkill(skillName)) {
+      executeAllTarget(skillName);
     } else {
-      // 攻撃スキル
+      // 単体攻撃スキル
       if (aliveEnemyIdxs.length === 1) {
         executeAction("skill", aliveEnemyIdxs[0]!, skillName);
       } else {
@@ -609,6 +647,11 @@ export default function BattlePage() {
                         sx={{ display: "flex", justifyContent: "space-between", px: 1.5, py: 0.75 }}>
                         <Typography component="span" sx={{ fontSize: 12, fontWeight: 700 }}>{sk}</Typography>
                         <Box sx={{ display: "flex", gap: 1.5 }}>
+                          {skill && skill.target === "all" && (
+                            <Typography component="span" sx={{ fontSize: 10, color: "warning.light" }}>
+                              全体
+                            </Typography>
+                          )}
                           {skill && skill.power > 0 && (
                             <Typography component="span" sx={{ fontSize: 10, color: "error.light" }}>
                               威力{skill.power}
