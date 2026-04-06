@@ -8,6 +8,7 @@ export interface PartyMemberTemplate {
   id: string;         // テンプレートID (hero-001 など)
   name: string;
   type: MonsterType;
+  race: string;       // 種族
   maxHp: number;
   maxMp: number;
   atk: number;
@@ -23,6 +24,7 @@ export const PARTY_MEMBER_MASTER: PartyMemberTemplate[] = [
     id: "hero-001",
     name: "男性剣士",
     type: "地",
+    race: "人型族",
     maxHp: 40,
     maxMp: 10,
     atk: 14,
@@ -36,6 +38,7 @@ export const PARTY_MEMBER_MASTER: PartyMemberTemplate[] = [
     id: "hero-002",
     name: "女性剣士",
     type: "光",
+    race: "人型族",
     maxHp: 30,
     maxMp: 24,
     atk: 10,

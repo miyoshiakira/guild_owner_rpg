@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Box, Button, Card, CardContent, Typography, Divider, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import { useGame } from "../store/gameStore";
@@ -9,6 +10,7 @@ import { hasSaveData, loadGameData, deleteSaveData } from "../db/saveService";
 export default function LoginPage() {
   const { dispatch } = useGame();
   const [saveExists, setSaveExists] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     hasSaveData().then(setSaveExists);
@@ -25,7 +27,8 @@ export default function LoginPage() {
     dispatch({ type: "SET_SCENE", payload: "guild" });
   };
 
-  const handleDeleteSave = async () => {
+  const handleDeleteConfirmed = async () => {
+    setDeleteConfirmOpen(false);
     await deleteSaveData();
     dispatch({ type: "RESET_GAME" }); // メモリ上の state も初期化（再ログイン時の再書き込み防止）
     setSaveExists(false);
@@ -83,7 +86,7 @@ export default function LoginPage() {
               color="error"
               size="small"
               fullWidth
-              onClick={handleDeleteSave}
+              onClick={() => setDeleteConfirmOpen(true)}
             >
               セーブデータを消去
             </Button>
@@ -94,6 +97,34 @@ export default function LoginPage() {
           </Typography>
         </CardContent>
       </Card>
+
+      {/* セーブデータ消去 確認ダイアログ */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        PaperProps={{
+          sx: { borderRadius: 2, minWidth: 300, border: "1px solid rgba(244,67,54,0.4)" },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          🗑️ セーブデータを消去しますか？
+        </DialogTitle>
+        <DialogContent sx={{ pt: "0 !important" }}>
+          <Typography variant="body2" color="text.secondary">
+            この操作は取り消せません。ギルドメンバー・装備品・進行状況が
+            <Box component="span" sx={{ color: "error.main", fontWeight: 700 }}>すべて削除</Box>
+            されます。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)} sx={{ color: "text.secondary" }}>
+            キャンセル
+          </Button>
+          <Button variant="contained" color="error" onClick={handleDeleteConfirmed}>
+            消去する
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

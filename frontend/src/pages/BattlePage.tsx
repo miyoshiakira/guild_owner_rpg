@@ -334,7 +334,9 @@ export default function BattlePage() {
       ally.mp = Math.max(0, ally.mp - mpCost);
       const multiplier = skillPower / 75;
       const elemCoeff = getElementCoeff(skillData?.element, target.type);
-      const base = ally.atk - target.def / 2 + Math.floor(Math.random() * 6);
+      // 属性付きスキル（魔法）は防御力を無視する
+      const isMagic = skillData?.element !== undefined;
+      const base = ally.atk - (isMagic ? target.def / 4 : target.def / 2) + Math.floor(Math.random() * 6);
       const dmg = Math.max(1, Math.floor(base * multiplier * elemCoeff));
       target.hp = Math.max(0, target.hp - dmg);
       msgs.push(`${ally.name}は${skillName}を使った！ ${target.name}に${dmg}ダメージ！`);
@@ -357,6 +359,7 @@ export default function BattlePage() {
             id: `mon-${Date.now()}`,
             name: master.name,
             type: master.type,
+            race: master.race,
             level: 1,
             hp: master.maxHp,
             maxHp: master.maxHp,
@@ -426,11 +429,13 @@ export default function BattlePage() {
     const skillPower = skillData?.power ?? 75;
     ally.mp = Math.max(0, ally.mp - mpCost);
     const multiplier = skillPower / 75;
+    // 属性付きスキル（魔法）は防御力を無視する
+    const isMagicAll = skillData?.element !== undefined;
     msgs.push(`${ally.name}は${skillName}を使った！`);
     newEnemies.forEach((target) => {
       if (target.hp <= 0) return;
       const elemCoeff = getElementCoeff(skillData?.element, target.type);
-      const base = ally.atk - target.def / 2 + Math.floor(Math.random() * 6);
+      const base = ally.atk - (isMagicAll ? 0 : target.def / 2) + Math.floor(Math.random() * 6);
       const dmg = Math.max(1, Math.floor(base * multiplier * elemCoeff));
       target.hp = Math.max(0, target.hp - dmg);
       const eMsg = getEffectivenessMsg(elemCoeff);

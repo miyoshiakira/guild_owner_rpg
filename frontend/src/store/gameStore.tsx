@@ -2,6 +2,9 @@ import { createContext, useContext, useReducer, useEffect, useRef, type ReactNod
 import { saveGameData, loadGameData, hasSaveData } from "../db/saveService";
 import { INIT_PLAYER, INIT_MONSTERS, INIT_ITEMS, INIT_EQUIPMENT } from "../data/initData";
 import { getExpToNextLevel } from "../data/expTable";
+import { PERSONALITY_MAP, DEFAULT_PERSONALITY_GROWTH } from "../data/masters/personalityMaster";
+import { TYPE_GROWTH_MAP, DEFAULT_TYPE_GROWTH } from "../data/masters/typeGrowthMaster";
+import { RACE_MAP, DEFAULT_RACE_GROWTH } from "../data/masters/raceMaster";
 import type { GameState, GameAction, EquipSlot } from "../types/game";
 import type { CraftRecipe } from "../types/masters";
 
@@ -204,13 +207,19 @@ function reducer(state: GameState, action: GameAction): GameState {
         const levelDiff = update.finalLevel - monster.level;
         if (levelDiff === 0) return { ...monster, exp: update.finalExp };
 
+        // 性格・属性・種族マスタから成長係数を取得
+        const pGrowth = PERSONALITY_MAP[monster.personality]?.growth ?? DEFAULT_PERSONALITY_GROWTH;
+        const tGrowth = TYPE_GROWTH_MAP[monster.type]?.growth    ?? DEFAULT_TYPE_GROWTH;
+        const rGrowth = RACE_MAP[monster.race ?? ""]?.growth     ?? DEFAULT_RACE_GROWTH;
+
         let hpIncrease = 0, mpIncrease = 0, atkIncrease = 0, defIncrease = 0, spdIncrease = 0;
         for (let i = 0; i < levelDiff; i++) {
-          hpIncrease  += Math.floor(Math.random() * 5) + 3; // 3-7
-          mpIncrease  += Math.floor(Math.random() * 3) + 1; // 1-3
-          atkIncrease += Math.floor(Math.random() * 3) + 1; // 1-3
-          defIncrease += Math.floor(Math.random() * 3) + 1; // 1-3
-          spdIncrease += Math.floor(Math.random() * 2) + 1; // 1-2
+          // 基礎乱数 × 性格係数 × 属性係数 × 種族係数（最低1、MPのみ最低0）
+          hpIncrease  += Math.max(1, Math.round((Math.random() * 5 + 3) * pGrowth.hp  * tGrowth.hp  * rGrowth.hp));
+          mpIncrease  += Math.max(0, Math.round((Math.random() * 3 + 1) * pGrowth.mp  * tGrowth.mp  * rGrowth.mp));
+          atkIncrease += Math.max(1, Math.round((Math.random() * 3 + 1) * pGrowth.atk * tGrowth.atk * rGrowth.atk));
+          defIncrease += Math.max(1, Math.round((Math.random() * 3 + 1) * pGrowth.def * tGrowth.def * rGrowth.def));
+          spdIncrease += Math.max(1, Math.round((Math.random() * 2 + 1) * pGrowth.spd * tGrowth.spd * rGrowth.spd));
         }
 
         return {

@@ -38,6 +38,7 @@ export interface Monster {
   id: string;
   name: string;
   type: MonsterType;
+  race?: string;        // 種族（未設定の場合は "人型族" にフォールバック）
   level: number;
   hp: number;
   maxHp: number;
@@ -69,6 +70,7 @@ export interface Enemy {
   masterId: string;
   name: string;
   type: MonsterType;
+  race: string;         // 種族
   level: number;
   hp: number;
   maxHp: number;

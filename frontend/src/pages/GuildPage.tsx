@@ -34,6 +34,16 @@ import { useGame } from "../store/gameStore";
 import type { Equipment, EquipSlot, Monster } from "../types/game";
 import { SpriteImage } from "../components/SpriteImage";
 import { SKILL_MAP } from "../data/masters/skillMaster";
+import { PERSONALITY_MAP } from "../data/masters/personalityMaster";
+import { TYPE_GROWTH_MAP } from "../data/masters/typeGrowthMaster";
+import { RACE_MAP } from "../data/masters/raceMaster";
+import { ENEMY_MASTER } from "../data/masters/enemyMaster";
+import type { GrowthCoeff } from "../data/masters/personalityMaster";
+
+/** モンスター名 → 種族 のフォールバック辞書（旧セーブデータ対応） */
+const RACE_BY_NAME: Record<string, string> = Object.fromEntries(
+  ENEMY_MASTER.map((e) => [e.name, e.race])
+);
 import type { SkillMaster } from "../types/masters";
 
 // ===== 定数 =====
@@ -46,6 +56,9 @@ const SLOT_ORDER: EquipSlot[] = ["weapon", "armor", "accessory"];
 
 const TYPE_COLORS: Record<string, string> = {
   水: "#3a7bd5", 地: "#c8a96a", 光: "#ffd740", 炎: "#f44336", 闇: "#7c4dff",
+};
+const TYPE_EMOJI: Record<string, string> = {
+  水: "💧", 地: "🌍", 光: "✨", 炎: "🔥", 闇: "🌑",
 };
 
 // ===== ドラッグ中フローティングプレビュー =====
@@ -487,6 +500,23 @@ const MonsterDetail = memo(function MonsterDetail({
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [skillDetail, setSkillDetail] = useState<SkillMaster | null>(null);
+  const [growthModal, setGrowthModal] = useState<{
+    title: string; emoji: string; description: string; growth: GrowthCoeff;
+  } | null>(null);
+
+  const openPersonalityGrowth = () => {
+    const p = PERSONALITY_MAP[monster.personality];
+    if (p) setGrowthModal({ title: p.name, emoji: "😊", description: p.description, growth: p.growth });
+  };
+  const openTypeGrowth = () => {
+    const t = TYPE_GROWTH_MAP[monster.type];
+    if (t) setGrowthModal({ title: `${monster.type}属性`, emoji: TYPE_EMOJI[monster.type] ?? "✨", description: t.description, growth: t.growth });
+  };
+  const openRaceGrowth = () => {
+    const raceName = monster.race ?? RACE_BY_NAME[monster.name];
+    const r = raceName ? RACE_MAP[raceName] : undefined;
+    if (r) setGrowthModal({ title: r.name, emoji: "🧬", description: r.description, growth: r.growth });
+  };
 
   const getEquipped = (slot: EquipSlot) => {
     const id = monster.equipped[slot];
@@ -522,8 +552,12 @@ const MonsterDetail = memo(function MonsterDetail({
             </Tooltip>
           </Box>
           <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", pl: 0.5 }}>
-            <Chip label={monster.type} size="small"
-              sx={{ bgcolor: TYPE_COLORS[monster.type], color: "#fff", height: 20, fontSize: 11 }} />
+            <Chip
+              label={`${TYPE_EMOJI[monster.type] ?? ""} ${monster.type}`}
+              size="small"
+              onClick={openTypeGrowth}
+              sx={{ bgcolor: TYPE_COLORS[monster.type], color: "#fff", height: 20, fontSize: 11, cursor: "pointer" }}
+            />
             <Chip label={`Lv.${monster.level}`} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />
             <Chip
               label={monster.isParty ? "⚔ 出撃中" : "💤 待機中"}
@@ -616,16 +650,111 @@ const MonsterDetail = memo(function MonsterDetail({
             />
           </Box>
 
-          {/* 性格・スキル */}
+          {/* 性格・種族・スキル */}
           <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-            <Chip label={`😊 ${monster.personality}`} size="small" variant="outlined"
-              sx={{ height: 20, fontSize: 10 }} />
+            <Chip
+              label={`😊 ${monster.personality}`}
+              size="small" variant="outlined"
+              onClick={openPersonalityGrowth}
+              sx={{ height: 20, fontSize: 10, cursor: "pointer",
+                "&:hover": { borderColor: "primary.main", color: "primary.light" } }}
+            />
+            {(() => {
+              const raceName = monster.race ?? RACE_BY_NAME[monster.name];
+              return raceName ? (
+                <Chip
+                  label={`🧬 ${raceName}`}
+                  size="small" variant="outlined"
+                  onClick={openRaceGrowth}
+                  sx={{ height: 20, fontSize: 10, cursor: "pointer",
+                    "&:hover": { borderColor: "secondary.main", color: "secondary.light" } }}
+                />
+              ) : null;
+            })()}
             {monster.skills.map((sk) => (
               <Chip key={sk} label={sk} size="small"
                 onClick={() => setSkillDetail(SKILL_MAP[sk] ?? { id: "", name: sk, power: 0, description: "詳細不明", mpCost: 0 })}
                 sx={{ height: 20, fontSize: 10, bgcolor: "rgba(124,77,255,0.15)", border: "1px solid rgba(124,77,255,0.3)", cursor: "pointer" }} />
             ))}
           </Box>
+
+          {/* 成長係数モーダル */}
+          <Dialog
+            open={growthModal !== null}
+            onClose={() => setGrowthModal(null)}
+            PaperProps={{ sx: { bgcolor: "background.paper", borderRadius: 2, minWidth: 270, maxWidth: 320 } }}
+          >
+            {growthModal && (
+              <>
+                <DialogTitle sx={{ pb: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    bgcolor: "rgba(124,77,255,0.15)", border: "1px solid rgba(124,77,255,0.4)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, flexShrink: 0,
+                  }}>{growthModal.emoji}</Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{growthModal.title}</Typography>
+                </DialogTitle>
+                <DialogContent sx={{ pt: "4px !important" }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+                    {growthModal.description}
+                  </Typography>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.6 }}>
+                    {(
+                      [
+                        { key: "hp",  label: "HP",  icon: "❤️" },
+                        { key: "mp",  label: "MP",  icon: "💙" },
+                        { key: "atk", label: "ATK", icon: "⚔️" },
+                        { key: "def", label: "DEF", icon: "🛡️" },
+                        { key: "spd", label: "SPD", icon: "💨" },
+                      ] as { key: keyof GrowthCoeff; label: string; icon: string }[]
+                    ).map(({ key, label, icon }) => {
+                      const val = growthModal.growth[key];
+                      const pct = Math.round((val - 1) * 100);
+                      const isUp = val > 1.0;
+                      const isDn = val < 1.0;
+                      const barColor = isUp ? "#4caf50" : isDn ? "#f44336" : "rgba(255,255,255,0.25)";
+                      const barWidth = isUp
+                        ? Math.min(100, (val - 1) * 200)
+                        : isDn
+                          ? Math.min(100, (1 - val) * 200)
+                          : 0;
+                      return (
+                        <Box key={key} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography sx={{ fontSize: 14, width: 20, textAlign: "center", flexShrink: 0 }}>{icon}</Typography>
+                          <Typography variant="caption" sx={{ width: 28, fontWeight: 600, flexShrink: 0 }}>{label}</Typography>
+                          {/* バー */}
+                          <Box sx={{ flex: 1, height: 6, bgcolor: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" }}>
+                            <Box sx={{
+                              height: "100%", borderRadius: 3,
+                              bgcolor: barColor,
+                              width: `${barWidth}%`,
+                              float: isDn ? "right" : "left",
+                            }} />
+                          </Box>
+                          {/* 数値 */}
+                          <Typography variant="caption" sx={{
+                            width: 46, textAlign: "right", fontWeight: 700, flexShrink: 0,
+                            color: isUp ? "success.light" : isDn ? "error.light" : "text.secondary",
+                            fontSize: 12,
+                          }}>
+                            {val.toFixed(1)}×{pct !== 0 && (
+                              <Box component="span" sx={{ fontSize: 9, ml: 0.3 }}>
+                                ({pct > 0 ? "+" : ""}{pct}%)
+                              </Box>
+                            )}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </DialogContent>
+                <DialogActions sx={{ pt: 0 }}>
+                  <Button size="small" onClick={() => setGrowthModal(null)}>閉じる</Button>
+                </DialogActions>
+              </>
+            )}
+          </Dialog>
 
           {/* スキル詳細モーダル */}
           <Dialog

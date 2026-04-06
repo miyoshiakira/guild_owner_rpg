@@ -15,6 +15,7 @@ export interface EnemyMaster {
   id: string;
   name: string;
   type: MonsterType;
+  race: string;         // 種族
   level: number;
   hp: number;
   maxHp: number;
