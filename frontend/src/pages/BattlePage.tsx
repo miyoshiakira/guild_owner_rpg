@@ -108,7 +108,11 @@ export default function BattlePage() {
   // 戦闘終了シグナル: null = 戦闘中, それ以外 = 結果を処理待ち
   const [battleEndSignal, setBattleEndSignal] = useState<BattleEndSignal | null>(null);
   const [runConfirmOpen, setRunConfirmOpen] = useState(false);
-  const [isAutoMode, setIsAutoMode] = useState(false);
+  const isAutoMode = state.isAutoBattle;
+  const setIsAutoMode = (value: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof value === "function" ? value(state.isAutoBattle) : value;
+    dispatch({ type: "SET_AUTO_BATTLE", payload: next });
+  };
   // オートバトル用: レンダーごとに最新クロージャで上書きし、useEffect から呼び出す
   const executeAutoTurnRef = useRef<(() => void) | null>(null);
 

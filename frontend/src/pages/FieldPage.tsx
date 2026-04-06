@@ -15,7 +15,7 @@ import type { MapMasterData } from "../data/masters/mapMaster";
 import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
 import type { EnemyMaster } from "../types/masters";
 import type { Enemy } from "../types/game";
-import { loadGameData, saveGameData } from "../db/saveService";
+import { loadMapPosition, saveMapPosition } from "../db/saveService";
 import TownModal from "../components/TownModal";
 import ShopModal from "../components/ShopModal";
 import TownEnterButton from "../components/TownEnterButton";
@@ -326,24 +326,28 @@ export default function FieldPage() {
     dispatch({ type: "VISIT_MAP", payload: currentMapId });
   }, [currentMapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ロード
+  // ロード: activeSlot を使ってマップ位置だけを読み込む
   useEffect(() => {
-    loadGameData().then((saved) => {
+    const slotId = state.activeSlot;
+    loadMapPosition(slotId).then((saved) => {
       posLoaded.current = true;
       if (saved.playerPos)    setPlayerPos(saved.playerPos);
       if (saved.currentMapId) setCurrentMapId(saved.currentMapId);
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // デバウンスセーブ
+  // マップ位置専用デバウンスセーブ（ref で管理し useEffect 依存から完全分離）
   const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!posLoaded.current) return;
+  const schedulePosSave = useCallback(() => {
     if (posTimer.current) clearTimeout(posTimer.current);
     posTimer.current = setTimeout(() => {
-      saveGameData({ playerPos, currentMapId });
-    }, 500);
-  }, [playerPos, currentMapId]);
+      saveMapPosition(
+        state.activeSlot,
+        playerPosRef.current,
+        currentMapRef.current.id,
+      );
+    }, 2000); // 2秒デバウンス（連続移動中はセーブしない）
+  }, [state.activeSlot]);
 
   // マップ遷移: フェードアウト → マップ切り替え → フェードイン
   const doTransition = useCallback((toMapId: string, toPos: PlayerPos, label: string) => {
@@ -362,11 +366,13 @@ export default function FieldPage() {
         setPlayerPos(p.pos);
         playerPosRef.current = p.pos;
         pendingTransition.current = null;
+        // マップ遷移完了時に即座に位置を保存（デバウンスなし）
+        saveMapPosition(state.activeSlot, p.pos, p.mapId);
       }
       setTransitionPhase("in");
     }, 420);
     return () => clearTimeout(t);
-  }, [transitionPhase]);
+  }, [transitionPhase, state.activeSlot]);
 
   // フェードイン完了 → idle
   useEffect(() => {
@@ -383,7 +389,8 @@ export default function FieldPage() {
     setPlayerPos(mapData.defaultPos);
     playerPosRef.current = mapData.defaultPos;
     setShowWorldMap(false);
-  }, []);
+    saveMapPosition(state.activeSlot, mapData.defaultPos, mapId);
+  }, [state.activeSlot]);
 
   // 移動処理（ref ベースで stale closure を回避）
   const tryMove = useCallback((dr: number, dc: number) => {
@@ -403,6 +410,7 @@ export default function FieldPage() {
 
     setPlayerPos({ row: nr, col: nc });
     setStepCount((s) => s + 1);
+    schedulePosSave(); // 移動のたびにデバウンスタイマーをリセット
 
     // ポータル遷移チェック
     const transition = map.transitions.find(
@@ -431,7 +439,7 @@ export default function FieldPage() {
         dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
       }, 200);
     }
-  }, [dispatch, doTransition]);
+  }, [dispatch, doTransition, schedulePosSave]);
 
   // キーボード操作
   useEffect(() => {

@@ -29,6 +29,7 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DragHandleIcon from "@mui/icons-material/DragHandle";
 import { useGame } from "../store/gameStore";
 import type { Equipment, EquipSlot, Monster } from "../types/game";
@@ -375,37 +376,68 @@ function PartyOrderSection({
 
 // ===== 一覧: 正方形アイコンセル =====
 const MonsterCell = memo(function MonsterCell({
-  monster, onClick, onToggleParty,
+  monster, onClick, onToggleParty, breedState,
 }: {
   monster: Monster;
   onClick: () => void;
   onToggleParty: (isParty: boolean) => void;
+  /** 配合モード時の表示状態 */
+  breedState?: "base" | "eligible" | "ineligible";
 }) {
+  const isInBreedMode = breedState !== undefined;
+  const isDisabled = breedState === "ineligible";
+  const isBase = breedState === "base";
+
   return (
     <Box
-      onClick={onClick}
+      onClick={isDisabled ? undefined : onClick}
       sx={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 0.5,
         pb: 0.5,
-        bgcolor: "background.paper",
-        border: "1px solid rgba(255,255,255,0.08)",
+        bgcolor: isBase ? "rgba(255,193,7,0.12)" : "background.paper",
+        border: isBase
+          ? "2px solid #ffc107"
+          : "1px solid rgba(255,255,255,0.08)",
         borderTop: `3px solid ${TYPE_COLORS[monster.type] ?? "#7c4dff"}`,
         borderRadius: 2,
-        cursor: "pointer",
+        cursor: isDisabled ? "not-allowed" : "pointer",
         position: "relative",
         userSelect: "none",
+        opacity: isDisabled ? 0.38 : 1,
         transition: "transform 0.12s, box-shadow 0.12s",
-        "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
-          borderColor: "rgba(124,77,255,0.5)",
-        },
-        "&:active": { transform: "scale(0.97)" },
+        ...(!isDisabled && !isInBreedMode && {
+          "&:hover": {
+            transform: "translateY(-2px)",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+            borderColor: "rgba(124,77,255,0.5)",
+          },
+          "&:active": { transform: "scale(0.97)" },
+        }),
+        ...(!isDisabled && isInBreedMode && !isBase && {
+          "&:hover": {
+            transform: "translateY(-2px)",
+            boxShadow: "0 6px 20px rgba(102,187,106,0.4)",
+            borderColor: "rgba(102,187,106,0.7)",
+          },
+          "&:active": { transform: "scale(0.97)" },
+        }),
       }}
     >
+      {/* 配合ベース選択済みバッジ */}
+      {isBase && (
+        <Box sx={{
+          position: "absolute", top: 4, right: 4, zIndex: 1,
+          bgcolor: "#ffc107", borderRadius: "50%",
+          width: 16, height: 16,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 10, fontWeight: 700, color: "#000",
+        }}>
+          ⚗
+        </Box>
+      )}
       {/* 画像エリア */}
       <Box sx={{ width: "100%", aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <SpriteImage sprite={monster.sprite} size={48} alt={monster.name} />
@@ -488,6 +520,8 @@ const MonsterDetail = memo(function MonsterDetail({
   onBack,
   onToggleParty,
   onRename,
+  onDelete,
+  isLastMember,
 }: {
   monster: Monster;
   allEquipment: Equipment[];
@@ -495,10 +529,13 @@ const MonsterDetail = memo(function MonsterDetail({
   onBack: () => void;
   onToggleParty: (isParty: boolean) => void;
   onRename: (name: string) => void;
+  onDelete: () => void;
+  isLastMember: boolean;
 }) {
   const [portraitOpen, setPortraitOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [skillDetail, setSkillDetail] = useState<SkillMaster | null>(null);
   const [growthModal, setGrowthModal] = useState<{
     title: string; emoji: string; description: string; growth: GrowthCoeff;
@@ -549,6 +586,18 @@ const MonsterDetail = memo(function MonsterDetail({
               >
                 <EditIcon sx={{ fontSize: 16 }} />
               </IconButton>
+            </Tooltip>
+            <Tooltip title={isLastMember ? "最後の一人は削除できません" : "メンバーを削除"} placement="top" arrow>
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={isLastMember}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
+                >
+                  <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </span>
             </Tooltip>
           </Box>
           <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", pl: 0.5 }}>
@@ -649,6 +698,18 @@ const MonsterDetail = memo(function MonsterDetail({
               }}
             />
           </Box>
+
+          {/* 配合回数 */}
+          {(monster.breedCount ?? 0) > 0 && (
+            <Box sx={{ mt: 0.75 }}>
+              <Chip
+                label={`⚗ 配合 ${monster.breedCount}回`}
+                size="small"
+                variant="outlined"
+                sx={{ height: 20, fontSize: 10, borderColor: "rgba(255,193,7,0.6)", color: "#ffc107" }}
+              />
+            </Box>
+          )}
 
           {/* 性格・種族・スキル */}
           <Box sx={{ mt: 1, pt: 1, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", flexWrap: "wrap", gap: 0.5 }}>
@@ -950,6 +1011,37 @@ const MonsterDetail = memo(function MonsterDetail({
         </DialogActions>
       </Dialog>
 
+      {/* ── メンバー削除 確認ダイアログ ── */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        PaperProps={{ sx: { borderRadius: 2, minWidth: 300, border: "1px solid rgba(244,67,54,0.4)" } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+          🗑️ メンバーを削除しますか？
+        </DialogTitle>
+        <DialogContent sx={{ pt: "0 !important" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+            <SpriteImage sprite={monster.sprite} size={32} alt={monster.name} />
+            <Typography variant="body1" fontWeight={700}>{monster.name}</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            ギルドから追放されます。装備品は倉庫に戻ります。
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            この操作は取り消せません。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)} sx={{ color: "text.secondary" }}>
+            キャンセル
+          </Button>
+          <Button variant="contained" color="error" onClick={() => { setDeleteConfirmOpen(false); onDelete(); }}>
+            削除する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 });
@@ -963,6 +1055,35 @@ export default function GuildPage() {
   // 遷移方向: null=初回(アニメーションなし), "forward"=詳細へ, "back"=一覧へ
   const transitionDir = useRef<"forward" | "back" | null>(null);
 
+  // ── 配合モード ──
+  const [breedStep, setBreedStep] = useState<"off" | "base" | "partner">("off");
+  const [breedBase, setBreedBase] = useState<(typeof monsters)[0] | null>(null);
+  const [breedPartner, setBreedPartner] = useState<(typeof monsters)[0] | null>(null);
+  const [breedConfirmOpen, setBreedConfirmOpen] = useState(false);
+
+  const exitBreedMode = useCallback(() => {
+    setBreedStep("off");
+    setBreedBase(null);
+    setBreedPartner(null);
+    setBreedConfirmOpen(false);
+  }, []);
+
+  const handleBreedConfirm = useCallback(() => {
+    if (!breedBase || !breedPartner) return;
+    dispatch({ type: "BREED_MONSTER", payload: { baseId: breedBase.id, partnerId: breedPartner.id } });
+    dispatch({ type: "NOTIFY", payload: { message: `${breedBase.name} の配合が完了しました！`, severity: "success" } });
+    exitBreedMode();
+  }, [breedBase, breedPartner, dispatch, exitBreedMode]);
+
+  /** 配合モード時の各セルの状態 */
+  const getBreedState = useCallback((m: (typeof monsters)[0]) => {
+    if (breedStep === "off") return undefined;
+    if (breedStep === "base") return m.level >= 10 ? "eligible" : "ineligible";
+    // partner 選択中
+    if (m.id === breedBase?.id) return "base" as const;
+    return m.level >= 10 ? "eligible" : "ineligible";
+  }, [breedStep, breedBase]);
+
   const selectedMonster = selectedId ? monsters.find((m) => m.id === selectedId) ?? null : null;
   const storageItems = equipment.filter((e) => !e.equippedTo);
   const partyCount = monsters.filter((m) => m.isParty).length;
@@ -971,6 +1092,25 @@ export default function GuildPage() {
     transitionDir.current = "forward";
     setSelectedId(id);
   }, []);
+
+  /** モンスターセルクリック: 通常モードは詳細へ、配合モードは選択処理 */
+  const handleMonsterCellClick = useCallback((m: (typeof monsters)[0]) => {
+    if (breedStep === "off") {
+      handleSelectMonster(m.id);
+      return;
+    }
+    if (breedStep === "base") {
+      if (m.level < 10) return;
+      setBreedBase(m);
+      setBreedStep("partner");
+      return;
+    }
+    if (breedStep === "partner") {
+      if (m.level < 10 || m.id === breedBase?.id) return;
+      setBreedPartner(m);
+      setBreedConfirmOpen(true);
+    }
+  }, [breedStep, breedBase, handleSelectMonster]);
 
   const handleBack = useCallback(() => {
     transitionDir.current = "back";
@@ -1019,13 +1159,40 @@ export default function GuildPage() {
             {/* ── ヘッダー ── */}
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
               <Typography variant="h6">🐾 モンスター管理</Typography>
-              <Chip
-                label={`出撃中 ${partyCount} / ${monsters.length}`}
-                color={partyCount > 0 ? "success" : "default"}
-                variant="outlined"
-                size="small"
-              />
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip
+                  label={`出撃中 ${partyCount} / ${monsters.length}`}
+                  color={partyCount > 0 ? "success" : "default"}
+                  variant="outlined"
+                  size="small"
+                />
+                <Button
+                  size="small"
+                  variant={breedStep !== "off" ? "contained" : "outlined"}
+                  color={breedStep !== "off" ? "warning" : "inherit"}
+                  onClick={breedStep !== "off" ? exitBreedMode : () => setBreedStep("base")}
+                  sx={{ fontSize: 11, py: 0.4, px: 1, minWidth: 0, whiteSpace: "nowrap" }}
+                >
+                  {breedStep !== "off" ? "✕ キャンセル" : "⚗ 配合"}
+                </Button>
+              </Box>
             </Box>
+
+            {/* ── 配合モード バナー ── */}
+            {breedStep !== "off" && (
+              <Box sx={{
+                mb: 1.5, px: 1.5, py: 1,
+                bgcolor: "rgba(255,193,7,0.08)",
+                border: "1px solid rgba(255,193,7,0.4)",
+                borderRadius: 1.5,
+              }}>
+                <Typography variant="body2" color="warning.main" fontWeight={600} sx={{ fontSize: 12 }}>
+                  {breedStep === "base"
+                    ? "⚗ ベースにするモンスターを選んでください（Lv10以上）"
+                    : `⚗ 「${breedBase?.name}」と配合するモンスターを選んでください（Lv10以上・別モンスター）`}
+                </Typography>
+              </Box>
+            )}
 
             {/* ── 表示切り替えトグル ── */}
             <ToggleButtonGroup
@@ -1051,8 +1218,9 @@ export default function GuildPage() {
                   <Grid item xs={4} sm={3} md={2} key={m.id}>
                     <MonsterCell
                       monster={m}
-                      onClick={() => handleSelectMonster(m.id)}
+                      onClick={() => handleMonsterCellClick(m)}
                       onToggleParty={(isParty) => handleToggleParty(m.id, isParty)}
+                      breedState={getBreedState(m)}
                     />
                   </Grid>
                 ))}
@@ -1078,6 +1246,11 @@ export default function GuildPage() {
               onBack={handleBack}
               onToggleParty={(isParty) => handleToggleParty(selectedMonster.id, isParty)}
               onRename={(name) => dispatch({ type: "RENAME_MONSTER", payload: { monsterId: selectedMonster.id, name } })}
+              onDelete={() => {
+                dispatch({ type: "REMOVE_MONSTER", payload: { monsterId: selectedMonster.id } });
+                handleBack();
+              }}
+              isLastMember={monsters.length === 1}
             />
           </Box>
         )}
@@ -1088,6 +1261,77 @@ export default function GuildPage() {
       <DragOverlay dropAnimation={null}>
         <DragPreview />
       </DragOverlay>
+
+      {/* ── 配合確認ダイアログ ── */}
+      <Dialog
+        open={breedConfirmOpen}
+        onClose={() => { setBreedConfirmOpen(false); setBreedPartner(null); }}
+        PaperProps={{ sx: { borderRadius: 2, minWidth: 320, border: "1px solid rgba(255,193,7,0.4)" } }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>⚗ 配合の確認</DialogTitle>
+        <DialogContent sx={{ pt: "0 !important" }}>
+          {breedBase && breedPartner && (() => {
+            const combinedSkills = [...new Set([...breedBase.skills, ...breedPartner.skills])];
+            return (
+              <Box>
+                {/* 配合の組み合わせ */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5, mb: 2 }}>
+                  <Box sx={{ textAlign: "center" }}>
+                    <SpriteImage sprite={breedBase.sprite} size={48} alt={breedBase.name} />
+                    <Typography variant="caption" display="block" fontWeight={700}>{breedBase.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Lv.{breedBase.level}</Typography>
+                  </Box>
+                  <Typography variant="h6" color="warning.main">⚗</Typography>
+                  <Box sx={{ textAlign: "center" }}>
+                    <SpriteImage sprite={breedPartner.sprite} size={48} alt={breedPartner.name} />
+                    <Typography variant="caption" display="block" fontWeight={700}>{breedPartner.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Lv.{breedPartner.level}</Typography>
+                  </Box>
+                </Box>
+
+                {/* 配合後の変化 */}
+                <Box sx={{ bgcolor: "rgba(255,193,7,0.06)", border: "1px solid rgba(255,193,7,0.25)", borderRadius: 1.5, p: 1.25, mb: 1.5 }}>
+                  <Typography variant="caption" color="warning.main" fontWeight={700} display="block" sx={{ mb: 0.75 }}>
+                    配合後の {breedBase.name}
+                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 0.75 }}>
+                    <Chip label="Lv1 にリセット" size="small" color="warning" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
+                    <Chip label={`配合 ${(breedBase.breedCount ?? 0) + 1}回目`} size="small" sx={{ height: 18, fontSize: 10, bgcolor: "rgba(255,193,7,0.15)" }} />
+                    <Chip label={`性格: ${breedBase.personality} or ${breedPartner.personality}`} size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                    ステータスボーナス（相手の1/10）:
+                    HP+{Math.floor(breedPartner.maxHp / 10)} / MP+{Math.floor(breedPartner.maxMp / 10)} /
+                    ATK+{Math.floor(breedPartner.atk / 10)} / DEF+{Math.floor(breedPartner.def / 10)} / SPD+{Math.floor(breedPartner.spd / 10)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                    引き継ぎスキル（{combinedSkills.length}個）:
+                  </Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.4 }}>
+                    {combinedSkills.map((sk) => (
+                      <Chip key={sk} label={sk} size="small" sx={{ height: 18, fontSize: 10, bgcolor: "rgba(124,77,255,0.15)" }} />
+                    ))}
+                  </Box>
+                </Box>
+
+                <Typography variant="caption" color="error">
+                  ※ {breedBase.name} はパーティから外れます。この操作は取り消せません。
+                </Typography>
+              </Box>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button onClick={() => { setBreedConfirmOpen(false); setBreedPartner(null); }} sx={{ color: "text.secondary" }}>
+            キャンセル
+          </Button>
+          <Button variant="contained" color="warning" onClick={handleBreedConfirm}>
+            配合する
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DndContext>
   );
 }

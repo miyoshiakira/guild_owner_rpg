@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode, type Dispatch } from "react";
-import { saveGameData, loadGameData, hasSaveData } from "../db/saveService";
+import { saveGameData, saveSlotMeta } from "../db/saveService";
 import { INIT_PLAYER, INIT_MONSTERS, INIT_ITEMS, INIT_EQUIPMENT } from "../data/initData";
 import { getExpToNextLevel } from "../data/expTable";
 import { PERSONALITY_MAP, DEFAULT_PERSONALITY_GROWTH } from "../data/masters/personalityMaster";
@@ -18,6 +18,8 @@ const initialState: GameState = {
   notification: null,
   battleState: null,
   visitedMapIds: ["map-001"], // 初期マップは訪問済み
+  isAutoBattle: false,
+  activeSlot: 1,
 };
 
 function reducer(state: GameState, action: GameAction): GameState {
@@ -85,16 +87,22 @@ function reducer(state: GameState, action: GameAction): GameState {
     }
 
     case "LOAD_SAVE": {
-      const { player, monsters, equipment, items, materials, visitedMapIds } = action.payload;
+      const { player, monsters, equipment, items, materials, visitedMapIds, isAutoBattle, activeSlot } = action.payload;
       return {
         ...state,
-        ...(player         ? { player }         : {}),
-        ...(monsters       ? { monsters }       : {}),
-        ...(equipment      ? { equipment }      : {}),
-        ...(items          ? { items }          : {}),
-        ...(materials      ? { materials }      : {}),
-        ...(visitedMapIds  ? { visitedMapIds }  : {}),
+        ...(player              ? { player }              : {}),
+        ...(monsters            ? { monsters }            : {}),
+        ...(equipment           ? { equipment }           : {}),
+        ...(items               ? { items }               : {}),
+        ...(materials           ? { materials }           : {}),
+        ...(visitedMapIds       ? { visitedMapIds }       : {}),
+        ...(isAutoBattle !== undefined ? { isAutoBattle } : {}),
+        ...(activeSlot          ? { activeSlot }          : {}),
       };
+    }
+
+    case "SET_SLOT": {
+      return { ...state, activeSlot: action.payload };
     }
 
     case "UNEQUIP": {
@@ -307,6 +315,93 @@ function reducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "SET_AUTO_BATTLE": {
+      return { ...state, isAutoBattle: action.payload };
+    }
+
+    case "REMOVE_ITEM": {
+      return {
+        ...state,
+        items: state.items.filter((i) => i.id !== action.payload.itemId),
+      };
+    }
+
+    case "REMOVE_MATERIAL": {
+      const newMaterials = { ...state.materials };
+      delete newMaterials[action.payload.materialId];
+      return { ...state, materials: newMaterials };
+    }
+
+    case "REMOVE_EQUIPMENT": {
+      const eq = state.equipment.find((e) => e.id === action.payload.equipmentId);
+      return {
+        ...state,
+        equipment: state.equipment.filter((e) => e.id !== action.payload.equipmentId),
+        monsters: eq?.equippedTo
+          ? state.monsters.map((m) =>
+              m.id === eq.equippedTo
+                ? { ...m, equipped: { ...m.equipped, [eq.slot]: null } }
+                : m
+            )
+          : state.monsters,
+      };
+    }
+
+    case "BREED_MONSTER": {
+      const { baseId, partnerId } = action.payload;
+      const base    = state.monsters.find((m) => m.id === baseId);
+      const partner = state.monsters.find((m) => m.id === partnerId);
+      if (!base || !partner) return state;
+
+      // スキルは両親の和集合（重複排除）
+      const combinedSkills = [...new Set([...base.skills, ...partner.skills])];
+      // 性格はどちらかの親からランダム継承
+      const newPersonality = Math.random() < 0.5 ? base.personality : partner.personality;
+      // ステータスは現在値 + 相手の10分の1
+      const newMaxHp = base.maxHp + Math.floor(partner.maxHp / 10);
+      const newMaxMp = base.maxMp + Math.floor(partner.maxMp / 10);
+      const newAtk   = base.atk  + Math.floor(partner.atk   / 10);
+      const newDef   = base.def  + Math.floor(partner.def   / 10);
+      const newSpd   = base.spd  + Math.floor(partner.spd   / 10);
+
+      const bredMonster = {
+        ...base,
+        level: 1,
+        exp: 0,
+        expNext: getExpToNextLevel(1),
+        hp: newMaxHp,
+        maxHp: newMaxHp,
+        mp: newMaxMp,
+        maxMp: newMaxMp,
+        atk: newAtk,
+        def: newDef,
+        spd: newSpd,
+        skills: combinedSkills,
+        personality: newPersonality,
+        breedCount: (base.breedCount ?? 0) + 1,
+        isParty: false, // Lv1 になるのでパーティから外す
+      };
+
+      return {
+        ...state,
+        monsters: state.monsters.map((m) => m.id === baseId ? bredMonster : m),
+      };
+    }
+
+    case "REMOVE_MONSTER": {
+      const target = state.monsters.find((m) => m.id === action.payload.monsterId);
+      if (!target) return state;
+      // 装備を全て外して倉庫に戻す
+      const equippedIds = Object.values(target.equipped).filter(Boolean) as string[];
+      return {
+        ...state,
+        monsters: state.monsters.filter((m) => m.id !== action.payload.monsterId),
+        equipment: state.equipment.map((e) =>
+          equippedIds.includes(e.id) ? { ...e, equippedTo: null } : e
+        ),
+      };
+    }
+
     case "RESET_GAME": {
       return {
         player: { ...INIT_PLAYER },
@@ -318,6 +413,8 @@ function reducer(state: GameState, action: GameAction): GameState {
         notification: null,
         battleState: null,
         visitedMapIds: ["map-001"],
+        isAutoBattle: false,
+        activeSlot: state.activeSlot, // スロット番号はリセット後も維持
       };
     }
 
@@ -336,35 +433,7 @@ const GameContext = createContext<GameContextValue | null>(null);
 export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // アプリ起動時にセーブデータを読み込む
-  useEffect(() => {
-    const initializeGame = async () => {
-      try {
-        const hasData = await hasSaveData();
-        if (hasData) {
-          const savedData = await loadGameData();
-          console.log("Loaded save data:", savedData);
-          
-          // 読み込んだデータで状態を更新
-          dispatch({
-            type: "LOAD_SAVE",
-            payload: {
-              ...(savedData.player        ? { player:        savedData.player }        : {}),
-              ...(savedData.monsters      ? { monsters:      savedData.monsters }      : {}),
-              ...(savedData.equipment     ? { equipment:     savedData.equipment }     : {}),
-              ...(savedData.items         ? { items:         savedData.items }         : {}),
-              ...(savedData.materials     ? { materials:     savedData.materials }     : {}),
-              ...(savedData.visitedMapIds ? { visitedMapIds: savedData.visitedMapIds } : {}),
-            },
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load save data:", error);
-      }
-    };
-
-    initializeGame();
-  }, []);
+  // スロット選択は LoginPage で行うため、起動時の自動ロードは不要
 
   // ログイン後（scene !== "login"）の状態変化を検知してデバウンスセーブ
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -373,6 +442,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      const slot = state.activeSlot;
       saveGameData({
         player: state.player,
         monsters: state.monsters,
@@ -380,13 +450,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
         items: state.items,
         materials: state.materials,
         visitedMapIds: state.visitedMapIds,
+        isAutoBattle: state.isAutoBattle,
+      }, slot);
+      saveSlotMeta(slot, {
+        savedAt: new Date().toISOString(),
+        playerName: state.player.name,
+        playerLevel: state.player.level ?? 1,
+        gold: state.player.gold,
       });
     }, 1500);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.visitedMapIds, state.scene]);
+  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.visitedMapIds, state.isAutoBattle, state.activeSlot, state.scene]);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>

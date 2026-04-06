@@ -54,6 +54,7 @@ export interface Monster {
   equipped: Record<EquipSlot, string | null>;
   exp: number;
   expNext: number;
+  breedCount?: number; // 配合回数
 }
 
 /** ドロップテーブルの1エントリ */
@@ -135,6 +136,8 @@ export interface GameState {
   notification: Notification | null;
   battleState: BattleState | null;
   visitedMapIds: string[];           // 訪問済みマップ ID 一覧
+  isAutoBattle: boolean;             // オートバトル設定（戦闘をまたいで維持）
+  activeSlot: number;                // 現在使用中のセーブスロット (1〜3)
 }
 
 export type GameAction =
@@ -148,7 +151,9 @@ export type GameAction =
   | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
   | { type: "UNEQUIP"; payload: { equipmentId: string } }
   | { type: "ADD_EQUIPMENT"; payload: Equipment }
-  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials" | "visitedMapIds">> }
+  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials" | "visitedMapIds" | "isAutoBattle" | "activeSlot">> }
+  | { type: "SET_AUTO_BATTLE"; payload: boolean }
+  | { type: "SET_SLOT"; payload: number }
   | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
   | { type: "ADD_MATERIALS"; payload: Record<string, number> }
   | { type: "CRAFT"; payload: import("./masters").CraftRecipe }
@@ -159,4 +164,9 @@ export type GameAction =
   | { type: "REORDER_MONSTERS"; payload: string[] }
   | { type: "VISIT_MAP"; payload: string }
   | { type: "SYNC_MONSTER_STATS"; payload: Array<{ monsterId: string; hp: number; mp: number }> }
-  | { type: "HEAL_PARTY" };
+  | { type: "HEAL_PARTY" }
+  | { type: "REMOVE_ITEM"; payload: { itemId: string } }
+  | { type: "REMOVE_MATERIAL"; payload: { materialId: string } }
+  | { type: "REMOVE_EQUIPMENT"; payload: { equipmentId: string } }
+  | { type: "REMOVE_MONSTER"; payload: { monsterId: string } }
+  | { type: "BREED_MONSTER"; payload: { baseId: string; partnerId: string } };
