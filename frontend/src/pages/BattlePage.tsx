@@ -13,6 +13,8 @@ import { ENEMY_MAP } from "../data/masters/enemyMaster";
 import { SKILL_MAP } from "../data/masters/skillMaster";
 import { getElementCoeff, getEffectivenessMsg } from "../data/masters/elementMaster";
 import BattleEndModal from "../components/BattleEndModal";
+import { useBgm } from "../contexts/BgmContext";
+import { BATTLE_BGM_ID } from "../data/masters/bgmMaster";
 
 interface StatBarProps {
   label: string;
@@ -69,6 +71,12 @@ interface BattleEndSignal {
 
 export default function BattlePage() {
   const { state, dispatch } = useGame();
+  const { play: playBgm } = useBgm();
+
+  // バトル開始時にバトル BGM を再生
+  useEffect(() => {
+    playBgm(BATTLE_BGM_ID);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { battleState, monsters } = state;
 
   // ── すべての hooks を条件分岐より前に配置 ──────────────────────────────

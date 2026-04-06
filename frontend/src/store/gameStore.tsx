@@ -357,12 +357,12 @@ function reducer(state: GameState, action: GameAction): GameState {
       const combinedSkills = [...new Set([...base.skills, ...partner.skills])];
       // 性格はどちらかの親からランダム継承
       const newPersonality = Math.random() < 0.5 ? base.personality : partner.personality;
-      // ステータスは現在値 + 相手の10分の1
-      const newMaxHp = base.maxHp + Math.floor(partner.maxHp / 10);
-      const newMaxMp = base.maxMp + Math.floor(partner.maxMp / 10);
-      const newAtk   = base.atk  + Math.floor(partner.atk   / 10);
-      const newDef   = base.def  + Math.floor(partner.def   / 10);
-      const newSpd   = base.spd  + Math.floor(partner.spd   / 10);
+      // ステータスはベースの半分 + 相手の10分の1（最低1）
+      const newMaxHp = Math.max(1, Math.floor(base.maxHp / 2) + Math.floor(partner.maxHp / 10));
+      const newMaxMp =            Math.floor(base.maxMp / 2) + Math.floor(partner.maxMp / 10);
+      const newAtk   = Math.max(1, Math.floor(base.atk   / 2) + Math.floor(partner.atk   / 10));
+      const newDef   = Math.max(1, Math.floor(base.def   / 2) + Math.floor(partner.def   / 10));
+      const newSpd   = Math.max(1, Math.floor(base.spd   / 2) + Math.floor(partner.spd   / 10));
 
       const bredMonster = {
         ...base,
@@ -379,12 +379,20 @@ function reducer(state: GameState, action: GameAction): GameState {
         skills: combinedSkills,
         personality: newPersonality,
         breedCount: (base.breedCount ?? 0) + 1,
-        isParty: false, // Lv1 になるのでパーティから外す
+        isParty: false,
       };
+
+      // 素材側モンスターの装備を倉庫へ戻す
+      const partnerEquippedIds = Object.values(partner.equipped).filter(Boolean) as string[];
 
       return {
         ...state,
-        monsters: state.monsters.map((m) => m.id === baseId ? bredMonster : m),
+        monsters: state.monsters
+          .map((m) => m.id === baseId ? bredMonster : m)
+          .filter((m) => m.id !== partnerId),
+        equipment: state.equipment.map((e) =>
+          partnerEquippedIds.includes(e.id) ? { ...e, equippedTo: null } : e
+        ),
       };
     }
 

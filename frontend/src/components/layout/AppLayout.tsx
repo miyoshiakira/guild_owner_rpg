@@ -5,7 +5,11 @@ import {
   BottomNavigation, BottomNavigationAction, useMediaQuery, useTheme,
   Snackbar, Alert, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
+  Tabs, Tab, Slider,
 } from "@mui/material";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import { useBgm } from "../../contexts/BgmContext";
 import ExploreIcon from "@mui/icons-material/Explore";
 import PeopleIcon from "@mui/icons-material/People";
 import InventoryIcon from "@mui/icons-material/Inventory";
@@ -38,10 +42,12 @@ function SyncChip({ status }: { status: SyncStatus }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { state, dispatch } = useGame();
   const { player, notification, scene } = state;
+  const { volume, muted, setVolume, setMuted } = useBgm();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState(0);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const isBattle = scene === "battle";
@@ -241,38 +247,91 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           },
         }}
       >
-        <DialogTitle sx={{ borderBottom: "1px solid rgba(124,77,255,0.2)", fontWeight: 700, color: "primary.light" }}>
+        <DialogTitle sx={{ borderBottom: "1px solid rgba(124,77,255,0.2)", fontWeight: 700, color: "primary.light", pb: 0 }}>
           ⚙️ 設定
         </DialogTitle>
-        <DialogContent sx={{ pt: 2.5 }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <Box sx={{ p: 1.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1.5, border: "1px solid rgba(255,255,255,0.07)" }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>
-                操作方法
-              </Typography>
-              <Box component="ul" sx={{ m: 0, mt: 0.75, pl: 2 }}>
+
+        {/* タブ */}
+        <Tabs
+          value={settingsTab}
+          onChange={(_, v) => setSettingsTab(v)}
+          sx={{ px: 2, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <Tab label="サウンド" sx={{ fontSize: 12, minHeight: 40 }} />
+          <Tab label="操作方法" sx={{ fontSize: 12, minHeight: 40 }} />
+          <Tab label="ゲーム情報" sx={{ fontSize: 12, minHeight: 40 }} />
+        </Tabs>
+
+        <DialogContent sx={{ pt: 2 }}>
+
+          {/* ── サウンドタブ ── */}
+          {settingsTab === 0 && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* ミュートトグル */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <IconButton
+                  size="small"
+                  onClick={() => setMuted(!muted)}
+                  sx={{ color: muted ? "text.disabled" : "primary.main" }}
+                >
+                  {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+                </IconButton>
+                <Typography variant="body2" color={muted ? "text.disabled" : "text.primary"}>
+                  {muted ? "ミュート中" : "BGM ON"}
+                </Typography>
+              </Box>
+
+              {/* 音量スライダー */}
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+                  音量: {Math.round(volume * 100)}%
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <VolumeOffIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                  <Slider
+                    value={volume}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    disabled={muted}
+                    onChange={(_, v) => setVolume(v as number)}
+                    sx={{ flex: 1, color: "primary.main" }}
+                    size="small"
+                  />
+                  <VolumeUpIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {/* ── 操作方法タブ ── */}
+          {settingsTab === 1 && (
+            <Box sx={{ p: 0.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1.5, border: "1px solid rgba(255,255,255,0.07)" }}>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
                 {[
                   "フィールド移動: WASD / 矢印キー",
                   "モバイル移動: スワイプ or D-pad",
                   "モンスター詳細: カードをクリック",
                   "装備: ドラッグ&ドロップ",
                 ].map((text) => (
-                  <Typography key={text} component="li" variant="caption" color="text.secondary" sx={{ fontSize: 11, lineHeight: 2 }}>
+                  <Typography key={text} component="li" variant="caption" color="text.secondary" sx={{ fontSize: 11, lineHeight: 2.2 }}>
                     {text}
                   </Typography>
                 ))}
               </Box>
             </Box>
-            <Box sx={{ p: 1.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1.5, border: "1px solid rgba(255,255,255,0.07)" }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>
-                ゲーム情報
-              </Typography>
-              <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.75, fontSize: 11 }}>
+          )}
+
+          {/* ── ゲーム情報タブ ── */}
+          {settingsTab === 2 && (
+            <Box sx={{ p: 1, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1.5, border: "1px solid rgba(255,255,255,0.07)" }}>
+              <Typography variant="caption" color="text.disabled" sx={{ fontSize: 11 }}>
                 Guild Owner RPG — 開発中
               </Typography>
             </Box>
-          </Box>
+          )}
         </DialogContent>
+
         <DialogActions sx={{ borderTop: "1px solid rgba(124,77,255,0.2)", px: 3, py: 1.5 }}>
           <Button onClick={() => setSettingsOpen(false)} variant="contained" sx={{ fontWeight: 700 }}>
             閉じる

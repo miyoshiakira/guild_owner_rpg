@@ -1,13 +1,23 @@
+import { useState, type ReactNode } from "react";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { darkTheme } from "./theme/theme";
 import { GameProvider, useGame } from "./store/gameStore";
+import { BgmProvider } from "./contexts/BgmContext";
 import AppLayout from "./components/layout/AppLayout";
+import BgmDownloadScreen from "./components/BgmDownloadScreen";
 import LoginPage from "./pages/LoginPage";
 import GuildPage from "./pages/GuildPage";
 import FieldPage from "./pages/FieldPage";
 import BattlePage from "./pages/BattlePage";
 import ItemsPage from "./pages/ItemsPage";
 import CraftPage from "./pages/CraftPage";
+
+/** BGM キャッシュが完了するまでダウンロード画面を表示する */
+function BgmGate({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  if (!ready) return <BgmDownloadScreen onComplete={() => setReady(true)} />;
+  return <>{children}</>;
+}
 
 function GameRouter() {
   const { state } = useGame();
@@ -34,9 +44,13 @@ export default function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <GameProvider>
-        <GameRouter />
-      </GameProvider>
+      <BgmProvider>
+        <GameProvider>
+          <BgmGate>
+            <GameRouter />
+          </BgmGate>
+        </GameProvider>
+      </BgmProvider>
     </ThemeProvider>
   );
 }

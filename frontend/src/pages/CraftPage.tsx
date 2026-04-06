@@ -76,8 +76,7 @@ export default function CraftPage() {
 
   const filteredRecipes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return CRAFT_RECIPE_MASTER;
-    return CRAFT_RECIPE_MASTER.filter((recipe) => {
+    let recipes = !q ? CRAFT_RECIPE_MASTER : CRAFT_RECIPE_MASTER.filter((recipe) => {
       if (recipe.name.toLowerCase().includes(q)) return true;
       if (recipe.description.toLowerCase().includes(q)) return true;
       if (recipe.result.name.toLowerCase().includes(q)) return true;
@@ -86,7 +85,20 @@ export default function CraftPage() {
         return mat && mat.name.toLowerCase().includes(q);
       });
     });
-  }, [searchQuery]);
+    
+    // レシピ可能順にソート（可能なものを上に）
+    return recipes.sort((a, b) => {
+      const aCraftable = canCraft(a);
+      const bCraftable = canCraft(b);
+      
+      // 可能なものを優先、不可能なものを後に
+      if (aCraftable && !bCraftable) return -1;
+      if (!aCraftable && bCraftable) return 1;
+      
+      // 両方可能または両方不可能の場合は名前順
+      return a.name.localeCompare(b.name);
+    });
+  }, [searchQuery, materials]);
 
   return (
     <Box sx={{ width: "100%", p: 2 }}>

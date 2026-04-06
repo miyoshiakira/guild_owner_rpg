@@ -1302,9 +1302,11 @@ export default function GuildPage() {
                     <Chip label={`性格: ${breedBase.personality} or ${breedPartner.personality}`} size="small" variant="outlined" sx={{ height: 18, fontSize: 10 }} />
                   </Box>
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                    ステータスボーナス（相手の1/10）:
-                    HP+{Math.floor(breedPartner.maxHp / 10)} / MP+{Math.floor(breedPartner.maxMp / 10)} /
-                    ATK+{Math.floor(breedPartner.atk / 10)} / DEF+{Math.floor(breedPartner.def / 10)} / SPD+{Math.floor(breedPartner.spd / 10)}
+                    配合後ステータス（ベースの½ + 相手の1/10）:
+                    HP {Math.max(1, Math.floor(breedBase.maxHp/2)+Math.floor(breedPartner.maxHp/10))} /
+                    ATK {Math.max(1, Math.floor(breedBase.atk/2)+Math.floor(breedPartner.atk/10))} /
+                    DEF {Math.max(1, Math.floor(breedBase.def/2)+Math.floor(breedPartner.def/10))} /
+                    SPD {Math.max(1, Math.floor(breedBase.spd/2)+Math.floor(breedPartner.spd/10))}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
                     引き継ぎスキル（{combinedSkills.length}個）:
@@ -1317,7 +1319,7 @@ export default function GuildPage() {
                 </Box>
 
                 <Typography variant="caption" color="error">
-                  ※ {breedBase.name} はパーティから外れます。この操作は取り消せません。
+                  ※ {breedPartner.name} はギルドから消えます。{breedBase.name} はパーティから外れます。この操作は取り消せません。
                 </Typography>
               </Box>
             );

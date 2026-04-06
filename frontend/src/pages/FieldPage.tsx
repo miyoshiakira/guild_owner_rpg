@@ -16,6 +16,8 @@ import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
 import type { EnemyMaster } from "../types/masters";
 import type { Enemy } from "../types/game";
 import { loadMapPosition, saveMapPosition } from "../db/saveService";
+import { useBgm } from "../contexts/BgmContext";
+import { MAP_BGM } from "../data/masters/bgmMaster";
 import TownModal from "../components/TownModal";
 import ShopModal from "../components/ShopModal";
 import TownEnterButton from "../components/TownEnterButton";
@@ -293,6 +295,7 @@ function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
 // ── メインページ ──────────────────────────────────────────────────────────
 export default function FieldPage() {
   const { state, dispatch } = useGame();
+  const { play: playBgm } = useBgm();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -313,6 +316,8 @@ export default function FieldPage() {
   const currentMapRef    = useRef<MapMasterData>(MAP_MASTER_MAP[DEFAULT_MAP_ID]!);
   const playerPosRef     = useRef<PlayerPos>({ row: 2, col: 4 });
   const transitionPhaseRef = useRef<"idle" | "out" | "in">("idle");
+  // スロットリング: 最後に移動が受け付けられた時刻
+  const lastMoveTimeRef  = useRef<number>(0);
 
   const currentMap = MAP_MASTER_MAP[currentMapId] ?? MAP_MASTER_MAP[DEFAULT_MAP_ID]!;
 
@@ -321,9 +326,11 @@ export default function FieldPage() {
   useEffect(() => { playerPosRef.current = playerPos; }, [playerPos]);
   useEffect(() => { transitionPhaseRef.current = transitionPhase; }, [transitionPhase]);
 
-  // マップ入場時に訪問済みとして記録
+  // マップ入場時: 訪問済み記録 & BGM 再生
   useEffect(() => {
     dispatch({ type: "VISIT_MAP", payload: currentMapId });
+    const bgmId = MAP_BGM[currentMapId];
+    if (bgmId) playBgm(bgmId);
   }, [currentMapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ロード: activeSlot を使ってマップ位置だけを読み込む
@@ -393,8 +400,14 @@ export default function FieldPage() {
   }, [state.activeSlot]);
 
   // 移動処理（ref ベースで stale closure を回避）
+  const MOVE_INTERVAL_MS = 100; // キーリピートを 100ms に制限
   const tryMove = useCallback((dr: number, dc: number) => {
     if (transitionPhaseRef.current !== "idle") return;
+
+    // スロットリング: OS キーリピートの過剰発火を間引く
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current < MOVE_INTERVAL_MS) return;
+    lastMoveTimeRef.current = now;
 
     const map = currentMapRef.current;
     const prev = playerPosRef.current;
@@ -408,6 +421,8 @@ export default function FieldPage() {
     const tile = tileMap[nr]![nc]!;
     if (!WALKABLE_TILES.has(tile)) return;
 
+    // ref を即時更新（レンダー完了を待たず次の tryMove で正しい位置を使えるようにする）
+    playerPosRef.current = { row: nr, col: nc };
     setPlayerPos({ row: nr, col: nc });
     setStepCount((s) => s + 1);
     schedulePosSave(); // 移動のたびにデバウンスタイマーをリセット
