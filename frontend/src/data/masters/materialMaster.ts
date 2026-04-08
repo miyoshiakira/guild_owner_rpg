@@ -38,6 +38,9 @@ export const MATERIAL_MASTER: MaterialItem[] = [
   { id: "mat-031", name: "魔神の結晶",      emoji: "🖤", description: "闇の神殿の奥底に漂う禍々しい魔力の結晶" },
   { id: "mat-032", name: "古代の宝珠",      emoji: "🏺", description: "古代神殿の最深部に安置されていた神秘の宝珠" },
   { id: "mat-033", name: "神聖氷晶石",      emoji: "❄️", description: "氷雪神殿の祭壇に生成された神聖な氷の結晶" },
+  { id: "mat-034", name: "砂の結晶", emoji: "⌛", description: "砂漠のモンスターが残した砂が凝固した結晶。乾燥した魔力を帯びている" },
+  { id: "mat-035", name: "影の欠片", emoji: "🌑", description: "闇の神殿に漂う影が固まったもの。触れると冷たい感触がする" },
+
 ];
 
 /** id → MaterialItem の引きマップ */

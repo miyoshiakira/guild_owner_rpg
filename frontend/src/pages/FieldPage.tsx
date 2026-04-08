@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Box, Card, CardContent, Typography, Chip, Button, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Typography, useMediaQuery, useTheme } from "@mui/material";
 import { useGame } from "../store/gameStore";
 import {
   MAP_MASTER_MAP,
-  MAP_TILE_COLORS,
-  MAP_TILE_NAMES,
   WALKABLE_TILES,
   DEFAULT_MAP_ID,
 } from "../data/masters/mapMaster";
@@ -22,6 +20,9 @@ import TownModal from "../components/TownModal";
 import ShopModal from "../components/ShopModal";
 import TownEnterButton from "../components/TownEnterButton";
 import WorldMapModal from "../components/WorldMapModal";
+import MapInfoCard from "../components/field/MapInfoCard";
+import MapLegendCard from "../components/field/MapLegendCard";
+import FieldHeader from "../components/field/FieldHeader";
 
 /**
  * マップの baseLevel と levelVariance からランダムなレベルを決定する。
@@ -520,31 +521,12 @@ export default function FieldPage() {
       </Box>
 
       {/* ヘッダー */}
-      <Card sx={{ mb: 1.5 }}>
-        <CardContent sx={{ py: "8px !important", px: "12px !important" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-            <Chip
-              label={`${currentMap.emoji} ${currentMap.name}`}
-              size="small"
-              sx={{ bgcolor: "rgba(124,77,255,0.18)", borderColor: "rgba(124,77,255,0.5)", color: "text.primary" }}
-              variant="outlined"
-            />
-            <Chip label={MAP_TILE_NAMES[currentTile]} size="small" variant="outlined" />
-            <Chip label={`歩数: ${stepCount}`} size="small" variant="outlined" />
-            <Button
-              size="small"
-              variant="outlined"
-              sx={{ ml: "auto", borderColor: "rgba(124,77,255,0.5)", color: "text.secondary" }}
-              onClick={() => setShowWorldMap(true)}
-            >
-              🗺️
-            </Button>
-            <Button size="small" variant="outlined" onClick={() => dispatch({ type: "SET_SCENE", payload: "guild" })}>
-              ← 拠点へ
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
+      <FieldHeader
+        currentMap={currentMap}
+        currentTile={currentTile}
+        stepCount={stepCount}
+        onWorldMapClick={() => setShowWorldMap(true)}
+      />
 
       {/* メインエリア */}
       <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "center", sm: "flex-start" } }}>
@@ -567,52 +549,10 @@ export default function FieldPage() {
         {!isMobile && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             {/* マップ情報 */}
-            <Card sx={{ minWidth: 160 }}>
-              <CardContent sx={{ pb: "12px !important" }}>
-                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>現在地</Typography>
-                <Typography variant="h6" sx={{ fontSize: 15 }}>
-                  {currentMap.emoji} {currentMap.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {currentMap.description}
-                </Typography>
-                {currentMap.transitions.length > 0 && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                      🚪 出口:
-                    </Typography>
-                    {currentMap.transitions.map((t, i) => (
-                      <Chip
-                        key={i}
-                        label={t.label}
-                        size="small"
-                        variant="outlined"
-                        sx={{ mr: 0.5, mb: 0.5, borderColor: "rgba(124,77,255,0.5)", fontSize: 10 }}
-                      />
-                    ))}
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
+            <MapInfoCard currentMap={currentMap} />
 
             {/* 凡例 */}
-            <Card sx={{ minWidth: 160 }}>
-              <CardContent sx={{ pb: "12px !important" }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>凡例</Typography>
-                {Object.entries(MAP_TILE_NAMES).map(([k, v]) => (
-                  <Box key={k} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                    <Box sx={{
-                      width: 14, height: 14,
-                      bgcolor: MAP_TILE_COLORS[Number(k)],
-                      borderRadius: 0.5,
-                      flexShrink: 0,
-                      border: Number(k) === 9 ? "1px solid rgba(180,140,255,0.7)" : "none",
-                    }} />
-                    <Typography variant="caption">{v}</Typography>
-                  </Box>
-                ))}
-              </CardContent>
-            </Card>
+            <MapLegendCard />
           </Box>
         )}
       </Box>
