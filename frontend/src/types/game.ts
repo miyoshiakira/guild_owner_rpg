@@ -105,6 +105,7 @@ export interface Notification {
 export interface BattleRewards {
   gold: number;
   exp: number;
+  playerExp: number;          // イベント報酬のプレイヤー経験値
   materials: Record<string, number>;
   levelUps: Array<{
     monsterId: string;
@@ -124,6 +125,7 @@ export interface BattleRewards {
 export interface BattleState {
   enemies: Enemy[];
   turn: number;
+  pendingEventId?: string | null; // イベントバトルの場合のイベントID
 }
 
 export interface GameState {

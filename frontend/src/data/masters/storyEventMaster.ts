@@ -244,11 +244,11 @@ export const STORY_EVENT_MASTER: StoryEvent[] = [
   // === 第三章: ミルウッドの深森 ===
   {
     id: "evt-030",
-    name: "深森への入り口",
-    description: "ミルウッドの深森へ向かう",
-    chapter: 3,
+    name: "ミルウッドへ",
+    description: "森の案内人と会話して森へ進む",
+    chapter: 0,
     mapId: "map-001",
-    position: { row: 10, col: 1 },
+    position: { row: 10, col: 2 },
     trigger: "step",
     conditions: [
       { type: "flag", flag: "visited_forest", value: false },
@@ -383,7 +383,7 @@ export const STORY_EVENT_MASTER: StoryEvent[] = [
     description: "海底神殿へ向かう",
     chapter: 5,
     mapId: "map-001",
-    position: { row: 7, col: 1 },
+    position: { row: 7, col: 3 },
     trigger: "step",
     conditions: [
       { type: "flag", flag: "visited_underwater", value: false },
@@ -556,7 +556,7 @@ export const STORY_EVENT_MASTER: StoryEvent[] = [
     description: "毒の沼地へ向かう",
     chapter: 8,
     mapId: "map-004",
-    position: { row: 18, col: 5 },
+    position: { row: 19, col: 3 },
     trigger: "step",
     conditions: [
       { type: "flag", flag: "defeated_nine_tailed_fox", value: true },

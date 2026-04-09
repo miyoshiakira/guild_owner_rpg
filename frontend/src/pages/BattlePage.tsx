@@ -3,6 +3,7 @@ import {
   Box, Typography, Fade,
 } from "@mui/material";
 import { useGame } from "../store/gameStore";
+import { STORY_EVENT_MAP } from "../data/masters/storyEventMaster";
 import type { Monster, Enemy } from "../types/game";
 import { getExpToNextLevel } from "../data/expTable";
 import { ENEMY_MAP } from "../data/masters/enemyMaster";
@@ -510,7 +511,32 @@ export default function BattlePage() {
             dispatch({ type: "SYNC_MONSTER_STATS", payload: battleResult.finalStats });
           }
           if (battleResult.victory && battleResult.rewards) {
-            dispatch({ type: "APPLY_BATTLE_REWARDS", payload: battleResult.rewards });
+            // イベントバトルの場合、勝利報酬を上乗せ
+            const pendingEventId = state.battleState?.pendingEventId;
+            let rewards = { ...battleResult.rewards };
+            if (pendingEventId) {
+              const evt = STORY_EVENT_MAP[pendingEventId];
+              if (evt?.data.type === "battle") {
+                evt.data.winRewards.forEach((r) => {
+                  if (r.type === "gold")  rewards = { ...rewards, gold: rewards.gold + (r.gold ?? 0) };
+                  if (r.type === "exp")   rewards = { ...rewards, playerExp: (rewards.playerExp ?? 0) + (r.exp ?? 0) };
+                });
+              }
+            }
+            dispatch({ type: "APPLY_BATTLE_REWARDS", payload: rewards });
+            // フラグと完了マークはAPPLY後に dispatch（reducer で順次処理されるため加算安全）
+            if (pendingEventId) {
+              const evt = STORY_EVENT_MAP[pendingEventId];
+              if (evt?.data.type === "battle") {
+                evt.data.winRewards.forEach((r) => {
+                  if (r.type === "flag" && r.flag) {
+                    dispatch({ type: "SET_STORY_FLAG", payload: { flag: r.flag, value: true } });
+                  }
+                });
+                dispatch({ type: "COMPLETE_EVENT", payload: pendingEventId });
+                dispatch({ type: "NOTIFY", payload: { message: "イベント完了！", severity: "success" } });
+              }
+            }
           }
           dispatch({ type: "END_BATTLE" });
         }}

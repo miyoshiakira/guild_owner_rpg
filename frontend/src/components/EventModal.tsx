@@ -10,7 +10,7 @@ import {
   Chip,
   Avatar,
 } from "@mui/material";
-import type { StoryEvent, StoryNPC, EventReward } from "../types/masters";
+import type { EventReward } from "../types/masters";
 import { STORY_EVENT_MAP } from "../data/masters/storyEventMaster";
 import { STORY_NPC_MAP } from "../data/masters/storyNPCMaster";
 import { useGame } from "../store/gameStore";
@@ -29,7 +29,7 @@ export default function EventModal({
   onClose,
   onBattleStart,
 }: EventModalProps) {
-  const { dispatch } = useGame();
+  const { state, dispatch } = useGame();
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
 
   const event = STORY_EVENT_MAP[eventId];
@@ -60,38 +60,13 @@ export default function EventModal({
     }
   };
 
-  const handleBattleWin = () => {
-    // 勝利報酬を付与
-    if (isBattle) {
-      applyRewards(eventData.winRewards);
-    }
-
-    // イベントを完了としてマーク
-    dispatch({
-      type: "COMPLETE_EVENT",
-      payload: eventId,
-    });
-    dispatch({
-      type: "NOTIFY",
-      payload: { message: "イベント完了！", severity: "success" },
-    });
-
-    // 次のイベントへ
-    if (event.nextEventId) {
-      onClose();
-      // TODO: 次のイベントを開始するロジック
-    } else {
-      onClose();
-    }
-  };
-
   const applyRewards = (rewards: EventReward[]) => {
     rewards.forEach((reward) => {
       switch (reward.type) {
         case "gold":
           dispatch({
             type: "UPDATE_PLAYER",
-            payload: { gold: reward.gold },
+            payload: { gold: state.player.gold + (reward.gold ?? 0) },
           });
           dispatch({
             type: "NOTIFY",
@@ -101,7 +76,7 @@ export default function EventModal({
         case "exp":
           dispatch({
             type: "UPDATE_PLAYER",
-            payload: { exp: reward.exp },
+            payload: { exp: state.player.exp + (reward.exp ?? 0) },
           });
           dispatch({
             type: "NOTIFY",
@@ -218,7 +193,6 @@ export default function EventModal({
                 if (onBattleStart) {
                   onBattleStart(eventData.enemyIds);
                 }
-                handleBattleWin();
               }}
               fullWidth
             >

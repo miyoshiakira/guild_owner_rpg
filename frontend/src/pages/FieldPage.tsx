@@ -6,7 +6,7 @@ import {
   WALKABLE_TILES,
   DEFAULT_MAP_ID,
 } from "../data/masters/mapMaster";
-import { TILE_CHIP_POS, CHIP_SHEET_COLS, CHIP_SRC_SIZE } from "../data/map/mapChipConfig";
+import { TILE_CHIP_POS, CHIP_SHEET_COLS, CHIP_SRC_SIZE, MAP_TILE_MASTER } from "../data/map/mapChipConfig";
 import mapChipUrl from "../data/map/BaseMapChip.png";
 import { TOWN_MAP } from "../data/masters/townMaster";
 import type { MapMasterData } from "../data/masters/mapMaster";
@@ -256,14 +256,11 @@ function MapViewport({ playerPos, onSwipe, currentMap, events, storyFlags }: Map
             // イベントフラグが立っている場合は非表示
             const shouldHideEvent = eventAtTile && (() => {
               const eventData = eventAtTile.data;
-              console.log(`イベント ${eventAtTile.id} のフラグチェック開始`);
               // バトルイベントの勝利報酬にフラグがある場合
               if (eventData.type === "battle") {
                 const flagReward = eventData.winRewards?.find(r => r.type === "flag");
                 if (flagReward && flagReward.flag) {
-                  const flagValue = storyFlags[flagReward.flag];
-                  console.log(`  バトルイベント フラグ: ${flagReward.flag} = ${flagValue}`);
-                  return flagValue === true;
+                  return storyFlags[flagReward.flag] === true;
                 }
               }
               // 会話イベントの選択肢報酬にフラグがある場合
@@ -271,14 +268,11 @@ function MapViewport({ playerPos, onSwipe, currentMap, events, storyFlags }: Map
                 const hasFlagReward = eventData.choices?.some(c => c.rewards?.some(r => r.type === "flag"));
                 if (hasFlagReward) {
                   // いずれかのフラグが立っている場合
-                  const hasFlag = eventData.choices!.some(c =>
+                  return eventData.choices!.some(c =>
                     c.rewards?.some(r => r.type === "flag" && storyFlags[r.flag!] === true)
                   );
-                  console.log(`  会話イベント フラグチェック: ${hasFlag}`);
-                  return hasFlag;
                 }
               }
-              console.log(`  フラグなし: 表示`);
               return false;
             })();
             return (
@@ -310,13 +304,15 @@ function MapViewport({ playerPos, onSwipe, currentMap, events, storyFlags }: Map
                     component="span"
                     sx={{
                       position: "absolute",
-                      fontSize: 28,
+                      fontSize: 26,
                       animation: "event-pulse 2s ease-in-out infinite",
-                      filter: "drop-shadow(0 0 8px rgba(255,215,0,0.8))",
+                      filter: eventAtTile.data.type === "battle"
+                        ? "drop-shadow(0 0 8px rgba(255,80,80,0.9))"
+                        : "drop-shadow(0 0 8px rgba(255,215,0,0.8))",
                       zIndex: 1,
                     }}
                   >
-                    💬
+                    {eventAtTile.data.type === "battle" ? "⚔️" : "💬"}
                   </Box>
                 )}
                 {isPlayer && (
@@ -357,6 +353,7 @@ export default function FieldPage() {
   const [transitionLabel, setTransitionLabel] = useState<string>("");
   const [showTownModal, setShowTownModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [isPositionLoading, setIsPositionLoading] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [currentEventId, setCurrentEventId] = useState<string | null>(null);
@@ -388,25 +385,14 @@ export default function FieldPage() {
   // ロード: activeSlot を使ってマップ位置だけを読み込む
   useEffect(() => {
     const slotId = state.activeSlot;
+    setIsPositionLoading(true);
     loadMapPosition(slotId).then((saved) => {
       posLoaded.current = true;
-      if (saved.playerPos)    setPlayerPos(saved.playerPos);
+      setIsPositionLoading(false);
+      if (saved.playerPos) setPlayerPos(saved.playerPos);
       if (saved.currentMapId) setCurrentMapId(saved.currentMapId);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // マップ位置専用デバウンスセーブ（ref で管理し useEffect 依存から完全分離）
-  const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const schedulePosSave = useCallback(() => {
-    if (posTimer.current) clearTimeout(posTimer.current);
-    posTimer.current = setTimeout(() => {
-      saveMapPosition(
-        state.activeSlot,
-        playerPosRef.current,
-        currentMapRef.current.id,
-      );
-    }, 2000); // 2秒デバウンス（連続移動中はセーブしない）
-  }, [state.activeSlot]);
 
   // マップ遷移: フェードアウト → マップ切り替え → フェードイン
   const doTransition = useCallback((toMapId: string, toPos: PlayerPos, label: string) => {
@@ -454,6 +440,7 @@ export default function FieldPage() {
   // 移動処理（ref ベースで stale closure を回避）
   const MOVE_INTERVAL_MS = 100; // キーリピートを 100ms に制限
   const tryMove = useCallback((dr: number, dc: number) => {
+    if (isPositionLoading) return;
     if (transitionPhaseRef.current !== "idle") return;
 
     // スロットリング: OS キーリピートの過剰発火を間引く
@@ -477,7 +464,6 @@ export default function FieldPage() {
     playerPosRef.current = { row: nr, col: nc };
     setPlayerPos({ row: nr, col: nc });
     setStepCount((s) => s + 1);
-    schedulePosSave(); // 移動のたびにデバウンスタイマーをリセット
 
     // ポータル遷移チェック
     const transition = map.transitions.find(
@@ -502,6 +488,8 @@ export default function FieldPage() {
         const master = src[Math.floor(Math.random() * src.length)]!;
         return scaleEnemy(master, level, `${master.id}-${now}-${k}`);
       });
+      // 戦闘開始時の座標をDBにセーブ（FieldPageはアンマウットされるため再マウット後に読み込まれる）
+      saveMapPosition(state.activeSlot, { row: nr, col: nc }, currentMapRef.current.id);
       setTimeout(() => {
         dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
       }, 200);
@@ -522,7 +510,7 @@ export default function FieldPage() {
         }, 100);
       }
     }
-  }, [dispatch, doTransition, schedulePosSave, state.storyProgress]);
+  }, [dispatch, doTransition, state.storyProgress]);
 
   // キーボード操作
   useEffect(() => {
@@ -609,16 +597,25 @@ export default function FieldPage() {
               if (state.storyProgress.completedEvents.includes(e.id)) return false;
               // 前提フラグをチェック
               if (e.prerequisites) {
-                return e.prerequisites.every(flag => state.storyFlags[flag] === true);
+                return e.prerequisites.every(flag => (state.storyFlags[flag] ?? false) === true);
               }
               // 条件をチェック
               if (e.conditions) {
                 return e.conditions.every(c => {
                   if (c.type === "flag") {
-                    return state.storyFlags[c.flag!] === c.value;
+                    const flagValue = state.storyFlags[c.flag!] ?? false;
+                    return flagValue === c.value;
                   }
                   return true;
                 });
+              }
+              // タイルが進行可能かチェック
+              const tileAtEvent = currentMap.tileMap[e.position.row]?.[e.position.col];
+              if (tileAtEvent !== undefined) {
+                const tileConfig = MAP_TILE_MASTER[tileAtEvent];
+                if (tileConfig && !tileConfig.walkable) {
+                  return false;
+                }
               }
               return true;
             })}
@@ -670,6 +667,7 @@ export default function FieldPage() {
         <TownEnterButton onEnterTown={() => {
           dispatch({ type: "HEAL_PARTY" });
           dispatch({ type: "NOTIFY", payload: { message: "🏥 仲間のHPとMPが全回復した！", severity: "success" } });
+          saveMapPosition(state.activeSlot, playerPos, currentMapId);
           setShowTownModal(true);
         }} />
       )}
@@ -682,6 +680,7 @@ export default function FieldPage() {
           onClose={() => {
             setShowEventModal(false);
             setCurrentEventId(null);
+            saveMapPosition(state.activeSlot, playerPos, currentMapId);
           }}
           onBattleStart={(enemyIds) => {
             const level = mapLevel(currentMap.baseLevel, currentMap.levelVariance);
@@ -692,10 +691,32 @@ export default function FieldPage() {
               return scaleEnemy(master, level, `${id}-${now}-${k}`);
             }).filter((e): e is Enemy => e !== null);
             if (spawnedEnemies.length > 0) {
-              dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
+              // 戦闘開始時の座標をDBにセーブ
+              saveMapPosition(state.activeSlot, playerPos, currentMapId);
+              dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0, pendingEventId: currentEventId } });
             }
           }}
         />
+      )}
+
+      {/* ローディングオーバーレイ */}
+      {isPositionLoading && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <Typography sx={{ color: "white", fontSize: 24 }}>読み込み中...</Typography>
+        </Box>
       )}
 
       {/* ワールドマップモーダル */}

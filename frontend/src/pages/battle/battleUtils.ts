@@ -95,6 +95,7 @@ export function buildBattleResultFromSignal(
     rewards: {
       gold: enemyTotalGold,
       exp: enemyTotalExp,
+      playerExp: 0,
       materials,
       levelUps,
       monsterExpUpdates,

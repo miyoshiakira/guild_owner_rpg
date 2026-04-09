@@ -6,7 +6,6 @@ import { PERSONALITY_MAP, DEFAULT_PERSONALITY_GROWTH } from "../data/masters/per
 import { TYPE_GROWTH_MAP, DEFAULT_TYPE_GROWTH } from "../data/masters/typeGrowthMaster";
 import { RACE_MAP, DEFAULT_RACE_GROWTH } from "../data/masters/raceMaster";
 import type { GameState, GameAction, EquipSlot } from "../types/game";
-import type { CraftRecipe } from "../types/masters";
 
 const initialState: GameState = {
   player: { ...INIT_PLAYER },
@@ -254,7 +253,11 @@ function reducer(state: GameState, action: GameAction): GameState {
 
       return {
         ...state,
-        player: { ...state.player, gold: state.player.gold + gold },
+        player: {
+          ...state.player,
+          gold: state.player.gold + gold,
+          exp: state.player.exp + (action.payload.playerExp ?? 0),
+        },
         materials: newMaterials,
         monsters: newMonsters,
       };
@@ -451,7 +454,7 @@ function reducer(state: GameState, action: GameAction): GameState {
         battleState: null,
         visitedMapIds: ["map-001"],
         isAutoBattle: false,
-        activeSlot: state.activeSlot, // スロット番号はリセット後も維持
+        activeSlot: 1,
         storyFlags: {},
         storyProgress: {
           currentChapter: 0,
@@ -507,7 +510,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.visitedMapIds, state.isAutoBattle, state.activeSlot, state.scene]);
+  }, [state.player, state.monsters, state.equipment, state.items, state.materials, state.visitedMapIds, state.isAutoBattle, state.activeSlot, state.scene, state.storyFlags, state.storyProgress]);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>
