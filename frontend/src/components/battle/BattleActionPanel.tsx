@@ -116,7 +116,7 @@ export function BattleActionPanel({
             {aliveEnemyIdxs.map((i) => {
               const enemy = enemies[i]!;
               const scoutRate = pendingCmd === "catch" && activeAlly
-                ? Math.min(0.9, Math.max(0.05, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2))
+                ? Math.min(0.9, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2)
                 : null;
               return (
                 <Button

@@ -43,7 +43,7 @@ export function BattleStatusPanel({ enemies, allies, aliveEnemyIdxs, activeAllyI
         <Box className="battle-cards-wrap" sx={{ height: 282, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
           {enemies.map((enemy, i) => {
             const scoutPct = activeAlly
-              ? Math.round(Math.min(0.9, Math.max(0.05, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2)) * 100)
+              ? Math.round(Math.min(0.9, enemy.catchRate * (activeAlly.atk / (activeAlly.atk + enemy.def)) * 2) * 100)
               : Math.round(enemy.catchRate * 100);
             return (
               <Card key={`${enemy.id}-${i}`} style={{ ["--card-delay" as string]: `${i * 70}ms` }} sx={{

@@ -7,6 +7,7 @@ import type { CraftRecipe } from "../types/masters";
 import RecipeCard from "../components/craft/RecipeCard";
 import CraftConfirmDialog from "../components/craft/CraftConfirmDialog";
 import CraftSearchBar from "../components/craft/CraftSearchBar";
+import { getCraftRewardMessage } from "../utils/notificationUtils";
 
 export default function CraftPage() {
   const { state, dispatch } = useGame();
@@ -41,6 +42,15 @@ export default function CraftPage() {
 
     // クラフト実行
     dispatch({ type: "CRAFT", payload: selectedRecipe });
+
+    // クラフト完了通知
+    dispatch({
+      type: "NOTIFY",
+      payload: {
+        message: getCraftRewardMessage(selectedRecipe.result.name, selectedRecipe.result.type),
+        severity: "success",
+      },
+    });
 
     setDialogOpen(false);
     setSelectedRecipe(null);

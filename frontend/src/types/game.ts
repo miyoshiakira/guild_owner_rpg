@@ -138,6 +138,11 @@ export interface GameState {
   visitedMapIds: string[];           // 訪問済みマップ ID 一覧
   isAutoBattle: boolean;             // オートバトル設定（戦闘をまたいで維持）
   activeSlot: number;                // 現在使用中のセーブスロット (1〜3)
+  storyFlags: Record<string, boolean>; // ストーリー進行フラグ（イベントID → 完了フラグ）
+  storyProgress: {
+    currentChapter: number;          // 現在の章
+    completedEvents: string[];       // 完了したイベントID一覧
+  };
 }
 
 export type GameAction =
@@ -151,7 +156,7 @@ export type GameAction =
   | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
   | { type: "UNEQUIP"; payload: { equipmentId: string } }
   | { type: "ADD_EQUIPMENT"; payload: Equipment }
-  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials" | "visitedMapIds" | "isAutoBattle" | "activeSlot">> }
+  | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials" | "visitedMapIds" | "isAutoBattle" | "activeSlot" | "storyFlags" | "storyProgress">> }
   | { type: "SET_AUTO_BATTLE"; payload: boolean }
   | { type: "SET_SLOT"; payload: number }
   | { type: "SET_PARTY"; payload: { monsterId: string; isParty: boolean } }
@@ -169,4 +174,6 @@ export type GameAction =
   | { type: "REMOVE_MATERIAL"; payload: { materialId: string } }
   | { type: "REMOVE_EQUIPMENT"; payload: { equipmentId: string } }
   | { type: "REMOVE_MONSTER"; payload: { monsterId: string } }
-  | { type: "BREED_MONSTER"; payload: { baseId: string; partnerId: string } };
+  | { type: "BREED_MONSTER"; payload: { baseId: string; partnerId: string } }
+  | { type: "COMPLETE_EVENT"; payload: string }
+  | { type: "SET_STORY_FLAG"; payload: { flag: string; value: boolean } };

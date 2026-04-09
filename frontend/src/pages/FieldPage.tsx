@@ -11,7 +11,7 @@ import mapChipUrl from "../data/map/BaseMapChip.png";
 import { TOWN_MAP } from "../data/masters/townMaster";
 import type { MapMasterData } from "../data/masters/mapMaster";
 import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
-import type { EnemyMaster } from "../types/masters";
+import type { EnemyMaster, StoryEvent } from "../types/masters";
 import type { Enemy } from "../types/game";
 import { loadMapPosition, saveMapPosition } from "../db/saveService";
 import { useBgm } from "../contexts/BgmContext";
@@ -23,6 +23,8 @@ import WorldMapModal from "../components/WorldMapModal";
 import MapInfoCard from "../components/field/MapInfoCard";
 import MapLegendCard from "../components/field/MapLegendCard";
 import FieldHeader from "../components/field/FieldHeader";
+import EventModal from "../components/EventModal";
+import { getEventsByMap } from "../data/masters/storyEventMaster";
 
 /**
  * マップの baseLevel と levelVariance からランダムなレベルを決定する。
@@ -178,9 +180,11 @@ interface MapViewportProps {
   playerPos: PlayerPos;
   onSwipe: (dr: number, dc: number) => void;
   currentMap: MapMasterData;
+  events: StoryEvent[];
+  storyFlags: Record<string, boolean>;
 }
 
-function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
+function MapViewport({ playerPos, onSwipe, currentMap, events, storyFlags }: MapViewportProps) {
   const tileMap = currentMap.tileMap;
   const MAP_ROWS = tileMap.length;
   const MAP_COLS = tileMap[0]!.length;
@@ -248,6 +252,35 @@ function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
             const sheetDisplayW = CHIP_SHEET_COLS * TILE_SIZE; // スケール後シート幅
             // 元シートの縦比率を保って高さを算出
             const sheetDisplayH = Math.round((1000 / CHIP_SRC_SIZE) * TILE_SIZE);
+            const eventAtTile = events.find(e => e.position.row === r && e.position.col === c);
+            // イベントフラグが立っている場合は非表示
+            const shouldHideEvent = eventAtTile && (() => {
+              const eventData = eventAtTile.data;
+              console.log(`イベント ${eventAtTile.id} のフラグチェック開始`);
+              // バトルイベントの勝利報酬にフラグがある場合
+              if (eventData.type === "battle") {
+                const flagReward = eventData.winRewards?.find(r => r.type === "flag");
+                if (flagReward && flagReward.flag) {
+                  const flagValue = storyFlags[flagReward.flag];
+                  console.log(`  バトルイベント フラグ: ${flagReward.flag} = ${flagValue}`);
+                  return flagValue === true;
+                }
+              }
+              // 会話イベントの選択肢報酬にフラグがある場合
+              if (eventData.type === "conversation") {
+                const hasFlagReward = eventData.choices?.some(c => c.rewards?.some(r => r.type === "flag"));
+                if (hasFlagReward) {
+                  // いずれかのフラグが立っている場合
+                  const hasFlag = eventData.choices!.some(c =>
+                    c.rewards?.some(r => r.type === "flag" && storyFlags[r.flag!] === true)
+                  );
+                  console.log(`  会話イベント フラグチェック: ${hasFlag}`);
+                  return hasFlag;
+                }
+              }
+              console.log(`  フラグなし: 表示`);
+              return false;
+            })();
             return (
               <Box
                 key={`${r}-${c}`}
@@ -269,8 +302,23 @@ function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
                     ? "inset 0 0 14px rgba(255,215,64,0.5)"
                     : "none",
                   animation: isPortal ? "portal-pulse 1.5s ease-in-out infinite" : "none",
+                  position: "relative",
                 }}
               >
+                {eventAtTile && !shouldHideEvent && (
+                  <Box
+                    component="span"
+                    sx={{
+                      position: "absolute",
+                      fontSize: 28,
+                      animation: "event-pulse 2s ease-in-out infinite",
+                      filter: "drop-shadow(0 0 8px rgba(255,215,0,0.8))",
+                      zIndex: 1,
+                    }}
+                  >
+                    💬
+                  </Box>
+                )}
                 {isPlayer && (
                   <Box
                     component="span"
@@ -279,6 +327,7 @@ function MapViewport({ playerPos, onSwipe, currentMap }: MapViewportProps) {
                       animation: "player-bounce 0.9s ease-in-out infinite",
                       lineHeight: 1,
                       filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))",
+                      zIndex: 2,
                     }}
                   >
                     🧑
@@ -309,6 +358,8 @@ export default function FieldPage() {
   const [showTownModal, setShowTownModal] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [currentEventId, setCurrentEventId] = useState<string | null>(null);
 
   const posLoaded = useRef(false);
   // 遷移先情報を保持（フェードアウト完了後に適用）
@@ -454,8 +505,24 @@ export default function FieldPage() {
       setTimeout(() => {
         dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
       }, 200);
+    } else {
+      // イベントチェック
+      const events = getEventsByMap(map.id);
+      const event = events.find(e => e.position.row === nr && e.position.col === nc && e.trigger === "step");
+      if (event && !state.storyProgress.completedEvents.includes(event.id)) {
+        // 前提フラグをチェック
+        if (event.prerequisites) {
+          const hasPrerequisites = event.prerequisites.every(flag => state.storyFlags[flag] === true);
+          if (!hasPrerequisites) return;
+        }
+        // 簡易的な条件チェック（TODO: 完全な条件チェックを実装）
+        setTimeout(() => {
+          setCurrentEventId(event.id);
+          setShowEventModal(true);
+        }, 100);
+      }
     }
-  }, [dispatch, doTransition, schedulePosSave]);
+  }, [dispatch, doTransition, schedulePosSave, state.storyProgress]);
 
   // キーボード操作
   useEffect(() => {
@@ -533,7 +600,30 @@ export default function FieldPage() {
 
         {/* マップ + コントロール */}
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
-          <MapViewport playerPos={playerPos} onSwipe={tryMove} currentMap={currentMap} />
+          <MapViewport
+            playerPos={playerPos}
+            onSwipe={tryMove}
+            currentMap={currentMap}
+            events={getEventsByMap(currentMapId).filter(e => {
+              // 完了したイベントは非表示
+              if (state.storyProgress.completedEvents.includes(e.id)) return false;
+              // 前提フラグをチェック
+              if (e.prerequisites) {
+                return e.prerequisites.every(flag => state.storyFlags[flag] === true);
+              }
+              // 条件をチェック
+              if (e.conditions) {
+                return e.conditions.every(c => {
+                  if (c.type === "flag") {
+                    return state.storyFlags[c.flag!] === c.value;
+                  }
+                  return true;
+                });
+              }
+              return true;
+            })}
+            storyFlags={state.storyFlags}
+          />
 
           {/* 円形モバイルパッド */}
           <CircularDPad onMove={tryMove} />
@@ -582,6 +672,30 @@ export default function FieldPage() {
           dispatch({ type: "NOTIFY", payload: { message: "🏥 仲間のHPとMPが全回復した！", severity: "success" } });
           setShowTownModal(true);
         }} />
+      )}
+
+      {/* イベントモーダル */}
+      {currentEventId && (
+        <EventModal
+          open={showEventModal}
+          eventId={currentEventId}
+          onClose={() => {
+            setShowEventModal(false);
+            setCurrentEventId(null);
+          }}
+          onBattleStart={(enemyIds) => {
+            const level = mapLevel(currentMap.baseLevel, currentMap.levelVariance);
+            const now = Date.now();
+            const spawnedEnemies = enemyIds.map((id, k) => {
+              const master = ENEMY_MAP[id];
+              if (!master) return null;
+              return scaleEnemy(master, level, `${id}-${now}-${k}`);
+            }).filter((e): e is Enemy => e !== null);
+            if (spawnedEnemies.length > 0) {
+              dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
+            }
+          }}
+        />
       )}
 
       {/* ワールドマップモーダル */}

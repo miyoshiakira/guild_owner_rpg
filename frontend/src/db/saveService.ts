@@ -17,6 +17,11 @@ export interface SavedGameData {
   currentMapId: string;
   visitedMapIds: string[];
   isAutoBattle: boolean;
+  storyFlags: Record<string, boolean>;
+  storyProgress: {
+    currentChapter: number;
+    completedEvents: string[];
+  };
 }
 
 /** スロット表示用のサマリー情報 */

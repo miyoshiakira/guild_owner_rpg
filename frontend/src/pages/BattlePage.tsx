@@ -269,9 +269,9 @@ export default function BattlePage() {
       if (eMsg) msgs.push([lsW(eMsg)]);
       if (target.hp <= 0) msgs.push([lsE(target.name), ls("を"), { text: "倒した！", color: "#ffb74d" }, ls(" 💀")]);
     } else if (cmd === "catch") {
-      // スカウト確率: 捕獲率 × (使用者ATK / (使用者ATK + 相手DEF)) × 2 (5%〜90% にクランプ)
+      // スカウト確率: 捕獲率 × (使用者ATK / (使用者ATK + 相手DEF)) × 2 (0%〜90% にクランプ)
       const atkFactor = ally.atk / (ally.atk + target.def);
-      const rate = Math.min(0.9, Math.max(0.05, target.catchRate * atkFactor * 2));
+      const rate = Math.min(0.9, target.catchRate * atkFactor * 2);
 
       if (Math.random() < rate) {
         msgs.push([lsE(target.name), ls("のスカウトに成功した！ 🥚")]);

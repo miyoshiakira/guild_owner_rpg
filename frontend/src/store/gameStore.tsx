@@ -20,6 +20,11 @@ const initialState: GameState = {
   visitedMapIds: ["map-001"], // 初期マップは訪問済み
   isAutoBattle: false,
   activeSlot: 1,
+  storyFlags: {}, // ストーリー進行フラグ
+  storyProgress: {
+    currentChapter: 0,
+    completedEvents: [],
+  },
 };
 
 function reducer(state: GameState, action: GameAction): GameState {
@@ -87,7 +92,7 @@ function reducer(state: GameState, action: GameAction): GameState {
     }
 
     case "LOAD_SAVE": {
-      const { player, monsters, equipment, items, materials, visitedMapIds, isAutoBattle, activeSlot } = action.payload;
+      const { player, monsters, equipment, items, materials, visitedMapIds, isAutoBattle, activeSlot, storyFlags, storyProgress } = action.payload;
       return {
         ...state,
         ...(player              ? { player }              : {}),
@@ -98,6 +103,8 @@ function reducer(state: GameState, action: GameAction): GameState {
         ...(visitedMapIds       ? { visitedMapIds }       : {}),
         ...(isAutoBattle !== undefined ? { isAutoBattle } : {}),
         ...(activeSlot          ? { activeSlot }          : {}),
+        ...(storyFlags !== undefined ? { storyFlags } : { storyFlags: state.storyFlags }),
+        ...(storyProgress !== undefined ? { storyProgress } : { storyProgress: state.storyProgress }),
       };
     }
 
@@ -410,6 +417,28 @@ function reducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "COMPLETE_EVENT": {
+      const eventId = action.payload;
+      return {
+        ...state,
+        storyProgress: {
+          ...state.storyProgress,
+          completedEvents: [...state.storyProgress.completedEvents, eventId],
+        },
+      };
+    }
+
+    case "SET_STORY_FLAG": {
+      const { flag, value } = action.payload;
+      return {
+        ...state,
+        storyFlags: {
+          ...state.storyFlags,
+          [flag]: value,
+        },
+      };
+    }
+
     case "RESET_GAME": {
       return {
         player: { ...INIT_PLAYER },
@@ -423,6 +452,11 @@ function reducer(state: GameState, action: GameAction): GameState {
         visitedMapIds: ["map-001"],
         isAutoBattle: false,
         activeSlot: state.activeSlot, // スロット番号はリセット後も維持
+        storyFlags: {},
+        storyProgress: {
+          currentChapter: 0,
+          completedEvents: [],
+        },
       };
     }
 
@@ -459,6 +493,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         materials: state.materials,
         visitedMapIds: state.visitedMapIds,
         isAutoBattle: state.isAutoBattle,
+        storyFlags: state.storyFlags,
+        storyProgress: state.storyProgress,
       }, slot);
       saveSlotMeta(slot, {
         savedAt: new Date().toISOString(),

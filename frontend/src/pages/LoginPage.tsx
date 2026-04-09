@@ -49,6 +49,8 @@ export default function LoginPage() {
           ...(saved.materials     ? { materials:     saved.materials }     : {}),
           ...(saved.visitedMapIds ? { visitedMapIds: saved.visitedMapIds } : {}),
           ...(saved.isAutoBattle !== undefined ? { isAutoBattle: saved.isAutoBattle } : {}),
+          ...(saved.storyFlags    ? { storyFlags:    saved.storyFlags }    : {}),
+          ...(saved.storyProgress ? { storyProgress: saved.storyProgress } : {}),
         },
       });
       dispatch({ type: "NOTIFY", payload: { message: `スロット${slot.slotId} をロードしました`, severity: "info" } });
