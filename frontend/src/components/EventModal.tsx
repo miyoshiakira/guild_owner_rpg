@@ -13,6 +13,8 @@ import {
 import type { EventReward } from "../types/masters";
 import { STORY_EVENT_MAP } from "../data/masters/storyEventMaster";
 import { STORY_NPC_MAP } from "../data/masters/storyNPCMaster";
+import { ITEM_MAP } from "../data/masters/itemMaster";
+import { EQUIPMENT_MAP } from "../data/masters/equipmentMaster";
 import { useGame } from "../store/gameStore";
 import { getRewardMessage } from "../utils/notificationUtils";
 
@@ -94,18 +96,48 @@ export default function EventModal({
           });
           break;
         case "equipment":
-          // TODO: 装備品を追加するロジック
-          dispatch({
-            type: "NOTIFY",
-            payload: { message: getRewardMessage(reward), severity: "success" },
-          });
+          if (reward.itemId) {
+            const master = EQUIPMENT_MAP[reward.itemId];
+            if (master) {
+              const quantity = reward.quantity ?? 1;
+              for (let i = 0; i < quantity; i++) {
+                dispatch({
+                  type: "ADD_EQUIPMENT",
+                  payload: {
+                    ...master,
+                    id: `${master.id}-${Date.now()}-${i}`,
+                    equippedTo: null,
+                  },
+                });
+              }
+              dispatch({
+                type: "NOTIFY",
+                payload: { message: getRewardMessage(reward), severity: "success" },
+              });
+            }
+          }
           break;
         case "item":
-          // TODO: アイテムを追加するロジック
-          dispatch({
-            type: "NOTIFY",
-            payload: { message: getRewardMessage(reward), severity: "success" },
-          });
+          if (reward.itemId) {
+            const master = ITEM_MAP[reward.itemId];
+            if (master) {
+              const quantity = reward.quantity ?? 1;
+              for (let i = 0; i < quantity; i++) {
+                dispatch({
+                  type: "ADD_ITEM",
+                  payload: {
+                    ...master,
+                    id: `${master.id}-${Date.now()}-${i}`,
+                    quantity: 1,
+                  },
+                });
+              }
+              dispatch({
+                type: "NOTIFY",
+                payload: { message: getRewardMessage(reward), severity: "success" },
+              });
+            }
+          }
           break;
       }
     });

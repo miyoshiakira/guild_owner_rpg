@@ -326,6 +326,14 @@ export default function GuildPage() {
                 />
                 <Button
                   size="small"
+                  variant="outlined"
+                  onClick={() => dispatch({ type: "SET_SCENE", payload: "debug" })}
+                  sx={{ fontSize: 11, py: 0.4, px: 1, minWidth: 0, whiteSpace: "nowrap" }}
+                >
+                  🔧 デバッグ
+                </Button>
+                <Button
+                  size="small"
                   variant={breedStep !== "off" ? "contained" : "outlined"}
                   color={breedStep !== "off" ? "warning" : "inherit"}
                   onClick={breedStep !== "off" ? exitBreedMode : () => setBreedStep("base")}

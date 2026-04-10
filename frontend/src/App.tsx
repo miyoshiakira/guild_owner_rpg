@@ -11,6 +11,7 @@ import FieldPage from "./pages/FieldPage";
 import BattlePage from "./pages/BattlePage";
 import ItemsPage from "./pages/ItemsPage";
 import CraftPage from "./pages/CraftPage";
+import DebugPage from "./pages/DebugPage";
 
 /** BGM キャッシュが完了するまでダウンロード画面を表示する */
 function BgmGate({ children }: { children: ReactNode }) {
@@ -36,6 +37,7 @@ function GameRouter() {
       {scene === "field" && <FieldPage />}
       {scene === "items" && <ItemsPage />}
       {scene === "craft" && <CraftPage />}
+      {scene === "debug" && <DebugPage />}
     </AppLayout>
   );
 }

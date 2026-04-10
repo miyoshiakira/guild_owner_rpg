@@ -6,12 +6,9 @@ import {
   WALKABLE_TILES,
   DEFAULT_MAP_ID,
 } from "../data/masters/mapMaster";
-import { TILE_CHIP_POS, CHIP_SHEET_COLS, CHIP_SRC_SIZE, MAP_TILE_MASTER } from "../data/map/mapChipConfig";
-import mapChipUrl from "../data/map/BaseMapChip.png";
-import { TOWN_MAP } from "../data/masters/townMaster";
 import type { MapMasterData } from "../data/masters/mapMaster";
 import { ENEMY_MASTER, ENEMY_MAP } from "../data/masters/enemyMaster";
-import type { EnemyMaster, StoryEvent } from "../types/masters";
+import type { EnemyMaster } from "../types/masters";
 import type { Enemy } from "../types/game";
 import { loadMapPosition, saveMapPosition } from "../db/saveService";
 import { useBgm } from "../contexts/BgmContext";
@@ -19,326 +16,22 @@ import { MAP_BGM } from "../data/masters/bgmMaster";
 import TownModal from "../components/TownModal";
 import ShopModal from "../components/ShopModal";
 import TownEnterButton from "../components/TownEnterButton";
+import InteractButton from "../components/InteractButton";
 import WorldMapModal from "../components/WorldMapModal";
 import MapInfoCard from "../components/field/MapInfoCard";
 import MapLegendCard from "../components/field/MapLegendCard";
 import FieldHeader from "../components/field/FieldHeader";
 import EventModal from "../components/EventModal";
-import { getEventsByMap } from "../data/masters/storyEventMaster";
-
-/**
- * マップの baseLevel と levelVariance からランダムなレベルを決定する。
- */
-function mapLevel(baseLevel: number, levelVariance: number): number {
-  return baseLevel + Math.floor(Math.random() * (levelVariance + 1));
-}
-
-/**
- * Lv1 マスタデータを指定レベルにスケーリングして Enemy を生成する。
- */
-function scaleEnemy(master: EnemyMaster, level: number, uid: string): Enemy {
-  const f = 1 + (level - 1) * 0.35;
-  const hp = Math.round(master.maxHp * f);
-  return {
-    ...master,
-    id: uid,
-    masterId: master.id,
-    level,
-    hp,
-    maxHp: hp,
-    mp:    Math.round(master.maxMp * f),
-    maxMp: Math.round(master.maxMp * f),
-    atk:   Math.round(master.atk * f),
-    def:   Math.round(master.def * f),
-    spd:   Math.round(master.spd * f),
-    reward: {
-      exp:  Math.round(master.reward.exp  * Math.pow(level, 1.4)),
-      gold: Math.round(master.reward.gold * Math.pow(level, 1.2)),
-    },
-  };
-}
-
-const TILE_SIZE = 48;
-
-// ビューポート: 奇数タイル数にするとプレイヤーが必ず中央に来る
-const VIEWPORT_TILES = 7;
-const VIEWPORT_PX = TILE_SIZE * VIEWPORT_TILES;
-// 中央オフセット = ビューポート中央 - タイル半分
-const CENTER_OFFSET = VIEWPORT_PX / 2 - TILE_SIZE / 2;
-
-interface PlayerPos { row: number; col: number; }
-
-// ── 円形モバイルパッド ──────────────────────────────────────────────────
-const PAD_SIZE = 160;
-const BTN_SIZE = 50;
-
-const PAD_DIRS = [
-  { dr: -1, dc:  0, key: "up",    label: "▲",
-    pos: { top: 4, left: PAD_SIZE / 2 - BTN_SIZE / 2 } },
-  { dr:  1, dc:  0, key: "down",  label: "▼",
-    pos: { bottom: 4, left: PAD_SIZE / 2 - BTN_SIZE / 2 } },
-  { dr:  0, dc: -1, key: "left",  label: "◀",
-    pos: { left: 4, top: PAD_SIZE / 2 - BTN_SIZE / 2 } },
-  { dr:  0, dc:  1, key: "right", label: "▶",
-    pos: { right: 4, top: PAD_SIZE / 2 - BTN_SIZE / 2 } },
-] as const;
-
-function CircularDPad({ onMove }: { onMove: (dr: number, dc: number) => void }) {
-  const holdTimer    = useRef<ReturnType<typeof setTimeout>  | null>(null);
-  const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-
-  const startMove = useCallback((dr: number, dc: number, key: string) => {
-    setActiveKey(key);
-    onMove(dr, dc);
-    holdTimer.current = setTimeout(() => {
-      holdInterval.current = setInterval(() => onMove(dr, dc), 130);
-    }, 220);
-  }, [onMove]);
-
-  const stopMove = useCallback(() => {
-    setActiveKey(null);
-    if (holdTimer.current)    { clearTimeout(holdTimer.current);   holdTimer.current    = null; }
-    if (holdInterval.current) { clearInterval(holdInterval.current); holdInterval.current = null; }
-  }, []);
-
-  useEffect(() => () => stopMove(), [stopMove]);
-
-  return (
-    <Box sx={{ position: "relative", width: PAD_SIZE, height: PAD_SIZE, flexShrink: 0, userSelect: "none" }}>
-      <Box sx={{
-        position: "absolute", inset: 0,
-        borderRadius: "50%",
-        background: "radial-gradient(circle at 40% 35%, rgba(60,50,100,0.9) 0%, rgba(15,12,32,0.97) 100%)",
-        border: "2px solid rgba(124,77,255,0.35)",
-        boxShadow: "0 6px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)",
-      }} />
-      <Box sx={{
-        position: "absolute",
-        top: "50%", left: BTN_SIZE + 8, right: BTN_SIZE + 8,
-        height: 1, bgcolor: "rgba(124,77,255,0.18)", transform: "translateY(-50%)",
-      }} />
-      <Box sx={{
-        position: "absolute",
-        left: "50%", top: BTN_SIZE + 8, bottom: BTN_SIZE + 8,
-        width: 1, bgcolor: "rgba(124,77,255,0.18)", transform: "translateX(-50%)",
-      }} />
-      <Box sx={{
-        position: "absolute",
-        top: "50%", left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: 28, height: 28,
-        borderRadius: "50%",
-        background: "radial-gradient(circle at 40% 35%, rgba(160,130,255,0.25), rgba(80,60,160,0.15))",
-        border: "1.5px solid rgba(124,77,255,0.4)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
-      }} />
-      {PAD_DIRS.map(({ dr, dc, key, label, pos }) => {
-        const active = activeKey === key;
-        return (
-          <Box
-            key={key}
-            sx={{
-              position: "absolute",
-              width: BTN_SIZE, height: BTN_SIZE,
-              borderRadius: "50%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer",
-              touchAction: "none",
-              background: active
-                ? "radial-gradient(circle, rgba(160,120,255,0.7), rgba(100,60,200,0.5))"
-                : "radial-gradient(circle at 40% 35%, rgba(100,80,180,0.35), rgba(60,40,120,0.2))",
-              border: `1.5px solid ${active ? "rgba(180,150,255,0.9)" : "rgba(124,77,255,0.5)"}`,
-              boxShadow: active
-                ? "0 0 16px rgba(124,77,255,0.7), inset 0 1px 0 rgba(255,255,255,0.2)"
-                : "inset 0 1px 0 rgba(255,255,255,0.08)",
-              transform: active ? "scale(0.86)" : "scale(1)",
-              transition: "transform 0.07s, background 0.07s, box-shadow 0.07s, border-color 0.07s",
-              ...pos,
-            }}
-            onPointerDown={(e) => { e.preventDefault(); startMove(dr, dc, key); }}
-            onPointerUp={stopMove}
-            onPointerLeave={stopMove}
-            onPointerCancel={stopMove}
-          >
-            <Typography sx={{
-              fontSize: 17, lineHeight: 1, fontWeight: 700,
-              color: active ? "#fff" : "rgba(180,160,255,0.9)",
-              textShadow: active ? "0 0 8px rgba(200,180,255,0.8)" : "none",
-            }}>
-              {label}
-            </Typography>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-}
-
-// ── マップビューポート ────────────────────────────────────────────────────
-interface MapViewportProps {
-  playerPos: PlayerPos;
-  onSwipe: (dr: number, dc: number) => void;
-  currentMap: MapMasterData;
-  events: StoryEvent[];
-  storyFlags: Record<string, boolean>;
-}
-
-function MapViewport({ playerPos, onSwipe, currentMap, events, storyFlags }: MapViewportProps) {
-  const tileMap = currentMap.tileMap;
-  const MAP_ROWS = tileMap.length;
-  const MAP_COLS = tileMap[0]!.length;
-
-  const translateX = CENTER_OFFSET - playerPos.col * TILE_SIZE;
-  const translateY = CENTER_OFFSET - playerPos.row * TILE_SIZE;
-
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const SWIPE_THRESHOLD = 20;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    if (t) touchStart.current = { x: t.clientX, y: t.clientY };
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const t = e.changedTouches[0];
-    if (!t) return;
-    const dx = t.clientX - touchStart.current.x;
-    const dy = t.clientY - touchStart.current.y;
-    touchStart.current = null;
-    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      onSwipe(0, dx > 0 ? 1 : -1);
-    } else {
-      onSwipe(dy > 0 ? 1 : -1, 0);
-    }
-  };
-
-  return (
-    <Box
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-      sx={{
-        width: VIEWPORT_PX,
-        height: VIEWPORT_PX,
-        overflow: "hidden",
-        position: "relative",
-        border: "2px solid rgba(124,77,255,0.5)",
-        borderRadius: 2,
-        bgcolor: "#0d0d1a",
-        touchAction: "none",
-        userSelect: "none",
-      }}
-    >
-      <Box
-        sx={{
-          position: "absolute",
-          display: "grid",
-          gridTemplateColumns: `repeat(${MAP_COLS}, ${TILE_SIZE}px)`,
-          gridTemplateRows: `repeat(${MAP_ROWS}, ${TILE_SIZE}px)`,
-          transform: `translate(${translateX}px, ${translateY}px)`,
-          transition: "transform 0.1s ease-out",
-          willChange: "transform",
-        }}
-      >
-        {tileMap.map((row, r) =>
-          row.map((tile, c) => {
-            const isPlayer = playerPos.row === r && playerPos.col === c;
-            const isPortal = tile === 9;
-            const chip = TILE_CHIP_POS[tile] ?? TILE_CHIP_POS[0]!;
-            const chipBgX = -(chip[1] * TILE_SIZE);
-            const chipBgY = -(chip[0] * TILE_SIZE);
-            const sheetDisplayW = CHIP_SHEET_COLS * TILE_SIZE; // スケール後シート幅
-            // 元シートの縦比率を保って高さを算出
-            const sheetDisplayH = Math.round((1000 / CHIP_SRC_SIZE) * TILE_SIZE);
-            const eventAtTile = events.find(e => e.position.row === r && e.position.col === c);
-            // イベントフラグが立っている場合は非表示
-            const shouldHideEvent = eventAtTile && (() => {
-              const eventData = eventAtTile.data;
-              // バトルイベントの勝利報酬にフラグがある場合
-              if (eventData.type === "battle") {
-                const flagReward = eventData.winRewards?.find(r => r.type === "flag");
-                if (flagReward && flagReward.flag) {
-                  return storyFlags[flagReward.flag] === true;
-                }
-              }
-              // 会話イベントの選択肢報酬にフラグがある場合
-              if (eventData.type === "conversation") {
-                const hasFlagReward = eventData.choices?.some(c => c.rewards?.some(r => r.type === "flag"));
-                if (hasFlagReward) {
-                  // いずれかのフラグが立っている場合
-                  return eventData.choices!.some(c =>
-                    c.rewards?.some(r => r.type === "flag" && storyFlags[r.flag!] === true)
-                  );
-                }
-              }
-              return false;
-            })();
-            return (
-              <Box
-                key={`${r}-${c}`}
-                sx={{
-                  width: TILE_SIZE,
-                  height: TILE_SIZE,
-                  backgroundImage: `url(${mapChipUrl})`,
-                  backgroundPosition: `${chipBgX}px ${chipBgY}px`,
-                  backgroundSize: `${sheetDisplayW}px ${sheetDisplayH}px`,
-                  backgroundRepeat: "no-repeat",
-                  imageRendering: "pixelated",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  outline: isPlayer ? "2px solid #ffd740" : "none",
-                  outlineOffset: "-2px",
-                  boxSizing: "border-box",
-                  boxShadow: isPlayer
-                    ? "inset 0 0 14px rgba(255,215,64,0.5)"
-                    : "none",
-                  animation: isPortal ? "portal-pulse 1.5s ease-in-out infinite" : "none",
-                  position: "relative",
-                }}
-              >
-                {eventAtTile && !shouldHideEvent && (
-                  <Box
-                    component="span"
-                    sx={{
-                      position: "absolute",
-                      fontSize: 26,
-                      animation: "event-pulse 2s ease-in-out infinite",
-                      filter: eventAtTile.data.type === "battle"
-                        ? "drop-shadow(0 0 8px rgba(255,80,80,0.9))"
-                        : "drop-shadow(0 0 8px rgba(255,215,0,0.8))",
-                      zIndex: 1,
-                    }}
-                  >
-                    {eventAtTile.data.type === "battle" ? "⚔️" : "💬"}
-                  </Box>
-                )}
-                {isPlayer && (
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "inline-block",
-                      animation: "player-bounce 0.9s ease-in-out infinite",
-                      lineHeight: 1,
-                      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))",
-                      zIndex: 2,
-                    }}
-                  >
-                    🧑
-                  </Box>
-                )}
-              </Box>
-            );
-          })
-        )}
-      </Box>
-    </Box>
-  );
-}
+import CircularDPad from "../components/field/CircularDPad";
+import MapViewport from "../components/field/MapViewport";
+import { getEventsByMap, getEventAtPosition } from "../data/masters/storyEventMaster";
+import { mapLevel, scaleEnemy } from "../utils/fieldUtils";
+import { filterVisibleEvents } from "../utils/eventFilter";
+import { TOWN_MAP } from "../data/masters/townMaster";
 
 // ── メインページ ──────────────────────────────────────────────────────────
+
+interface PlayerPos { row: number; col: number; }
 export default function FieldPage() {
   const { state, dispatch } = useGame();
   const { play: playBgm } = useBgm();
@@ -474,7 +167,28 @@ export default function FieldPage() {
       setTimeout(() => {
         doTransition(transition.toMapId, { row: transition.toRow, col: transition.toCol }, transition.label);
       }, 150);
-    } else if (map.enemySpawnTiles.includes(tile) && Math.random() < 0.2) {
+      return;
+    }
+
+    // イベントチェック（遷移マスでない場合のみ）
+    const events = getEventsByMap(map.id);
+    const event = events.find(e => e.position.row === nr && e.position.col === nc && e.trigger === "step");
+    if (event && !state.storyProgress.completedEvents.includes(event.id)) {
+      // 前提フラグをチェック
+      if (event.prerequisites) {
+        const hasPrerequisites = event.prerequisites.every(flag => state.storyFlags[flag] === true);
+        if (!hasPrerequisites) return;
+      }
+      // 簡易的な条件チェック（TODO: 完全な条件チェックを実装）
+      setTimeout(() => {
+        setCurrentEventId(event.id);
+        setShowEventModal(true);
+      }, 100);
+      return;
+    }
+
+    // ランダム接敵（遷移マス・イベントマスでない場合のみ）
+    if (map.enemySpawnTiles.includes(tile) && Math.random() < 0.2) {
       const r = Math.random();
       const count = r < 0.6 ? 1 : r < 0.85 ? 2 : 3;
       const level = mapLevel(map.baseLevel, map.levelVariance);
@@ -493,22 +207,6 @@ export default function FieldPage() {
       setTimeout(() => {
         dispatch({ type: "START_BATTLE", payload: { enemies: spawnedEnemies, turn: 0 } });
       }, 200);
-    } else {
-      // イベントチェック
-      const events = getEventsByMap(map.id);
-      const event = events.find(e => e.position.row === nr && e.position.col === nc && e.trigger === "step");
-      if (event && !state.storyProgress.completedEvents.includes(event.id)) {
-        // 前提フラグをチェック
-        if (event.prerequisites) {
-          const hasPrerequisites = event.prerequisites.every(flag => state.storyFlags[flag] === true);
-          if (!hasPrerequisites) return;
-        }
-        // 簡易的な条件チェック（TODO: 完全な条件チェックを実装）
-        setTimeout(() => {
-          setCurrentEventId(event.id);
-          setShowEventModal(true);
-        }, 100);
-      }
     }
   }, [dispatch, doTransition, state.storyProgress]);
 
@@ -534,6 +232,18 @@ export default function FieldPage() {
     return townMapping ? TOWN_MAP[townMapping.townId] : undefined;
   };
   const currentTown = getCurrentTown();
+
+  // interact イベントのチェック
+  const getInteractEvent = () => {
+    const eventsAtPos = getEventAtPosition(currentMapId, playerPos.row, playerPos.col);
+    const result = eventsAtPos.find(
+      e => e.trigger === "interact" &&
+      !state.storyProgress.completedEvents.includes(e.id)
+    );
+    console.log(result);
+    return result;
+  };
+  const interactEvent = getInteractEvent();
 
   const handleShop = () => {
     setShowTownModal(false);
@@ -592,33 +302,12 @@ export default function FieldPage() {
             playerPos={playerPos}
             onSwipe={tryMove}
             currentMap={currentMap}
-            events={getEventsByMap(currentMapId).filter(e => {
-              // 完了したイベントは非表示
-              if (state.storyProgress.completedEvents.includes(e.id)) return false;
-              // 前提フラグをチェック
-              if (e.prerequisites) {
-                return e.prerequisites.every(flag => (state.storyFlags[flag] ?? false) === true);
-              }
-              // 条件をチェック
-              if (e.conditions) {
-                return e.conditions.every(c => {
-                  if (c.type === "flag") {
-                    const flagValue = state.storyFlags[c.flag!] ?? false;
-                    return flagValue === c.value;
-                  }
-                  return true;
-                });
-              }
-              // タイルが進行可能かチェック
-              const tileAtEvent = currentMap.tileMap[e.position.row]?.[e.position.col];
-              if (tileAtEvent !== undefined) {
-                const tileConfig = MAP_TILE_MASTER[tileAtEvent];
-                if (tileConfig && !tileConfig.walkable) {
-                  return false;
-                }
-              }
-              return true;
-            })}
+            events={filterVisibleEvents(
+              getEventsByMap(currentMapId),
+              state.storyProgress.completedEvents,
+              state.storyFlags,
+              currentMap
+            )}
             storyFlags={state.storyFlags}
           />
 
@@ -669,6 +358,14 @@ export default function FieldPage() {
           dispatch({ type: "NOTIFY", payload: { message: "🏥 仲間のHPとMPが全回復した！", severity: "success" } });
           saveMapPosition(state.activeSlot, playerPos, currentMapId);
           setShowTownModal(true);
+        }} />
+      )}
+
+      {/* 会話ボタン (interact イベント) */}
+      {interactEvent && (
+        <InteractButton onInteract={() => {
+          setCurrentEventId(interactEvent.id);
+          setShowEventModal(true);
         }} />
       )}
 

@@ -248,7 +248,7 @@ export const STORY_EVENT_MASTER: StoryEvent[] = [
     description: "森の案内人と会話して森へ進む",
     chapter: 0,
     mapId: "map-001",
-    position: { row: 10, col: 2 },
+    position: { row: 11, col: 0 },
     trigger: "step",
     conditions: [
       { type: "flag", flag: "visited_forest", value: false },
@@ -774,4 +774,10 @@ export const getEventsByMap = (mapId: string): StoryEvent[] => {
 
 export const getEventsByChapter = (chapter: number): StoryEvent[] => {
   return STORY_EVENT_MASTER.filter((evt) => evt.chapter === chapter);
+};
+
+export const getEventAtPosition = (mapId: string, row: number, col: number): StoryEvent[] => {
+  return STORY_EVENT_MASTER.filter(
+    (evt) => evt.mapId === mapId && evt.position.row === row && evt.position.col === col
+  );
 };

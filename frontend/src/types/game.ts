@@ -3,7 +3,7 @@
 export type SyncStatus = "synced" | "pending" | "offline";
 export type MonsterType = "水" | "地" | "光" | "炎" | "闇";
 export type ItemType = "消耗品" | "武器" | "防具" | "特殊";
-export type Scene = "login" | "guild" | "field" | "battle" | "items" | "craft";
+export type Scene = "login" | "guild" | "field" | "battle" | "items" | "craft" | "debug";
 export type NotificationSeverity = "success" | "error" | "warning" | "info";
 export type EquipSlot = "weapon" | "armor" | "accessory";
 
@@ -158,6 +158,7 @@ export type GameAction =
   | { type: "EQUIP"; payload: { equipmentId: string; monsterId: string; slot: EquipSlot } }
   | { type: "UNEQUIP"; payload: { equipmentId: string } }
   | { type: "ADD_EQUIPMENT"; payload: Equipment }
+  | { type: "ADD_ITEM"; payload: Item }
   | { type: "LOAD_SAVE"; payload: Partial<Pick<GameState, "player" | "monsters" | "equipment" | "items" | "materials" | "visitedMapIds" | "isAutoBattle" | "activeSlot" | "storyFlags" | "storyProgress">> }
   | { type: "SET_AUTO_BATTLE"; payload: boolean }
   | { type: "SET_SLOT"; payload: number }
