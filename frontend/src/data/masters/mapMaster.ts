@@ -6,7 +6,7 @@
  *   8=雪原       9=出口ポータル
  */
 
-import { 
+import {
   MAP1_TILES,
   MAP2_TILES,
   MAP3_TILES,
@@ -25,9 +25,117 @@ import {
   MAP16_TILES,
   MAP17_TILES,
   MAP18_TILES,
- } from "./mapCellMaster";
+} from "./mapCellMaster";
 
-// ── タイル共通定義 ────────────────────────────────────────────────────────
+// ── タイル種別 Enum ────────────────────────────────────────────────────────
+export enum TileType {
+  GRASS = 0,    // 草原/空地
+  WATER = 1,    // 水辺/溶岩(通行不可)
+  FOREST = 2,   // 森(通行不可)
+  ROCK = 3,     // 岩場(通行不可)
+  ROAD = 4,     // 道
+  TOWN = 5,     // 町/砦
+  DUNGEON = 6,  // ダンジョン
+  DESERT = 7,   // 砂漠
+  SNOW = 8,     // 雪原
+  PORTAL = 9,   // 出口ポータル
+}
+
+// ── タイル設定インターフェース ─────────────────────────────────────────────
+export interface TileConfig {
+  id: number;
+  name: string;
+  symbol: string;
+  color: string;
+  walkable: boolean;
+  enemySpawn: boolean;
+}
+
+// ── タイル設定定義 ────────────────────────────────────────────────────────
+export const TILE_CONFIG: Record<TileType, TileConfig> = {
+  [TileType.GRASS]: {
+    id: 0,
+    name: "草原",
+    symbol: "",
+    color: "#4a7c59",
+    walkable: true,
+    enemySpawn: true,
+  },
+  [TileType.WATER]: {
+    id: 1,
+    name: "水辺",
+    symbol: "≋",
+    color: "#3a7bd5",
+    walkable: false,
+    enemySpawn: false,
+  },
+  [TileType.FOREST]: {
+    id: 2,
+    name: "森",
+    symbol: "🌲",
+    color: "#2d5a1b",
+    walkable: false,
+    enemySpawn: false,
+  },
+  [TileType.ROCK]: {
+    id: 3,
+    name: "岩場",
+    symbol: "⛰",
+    color: "#7a6a5a",
+    walkable: false,
+    enemySpawn: false,
+  },
+  [TileType.ROAD]: {
+    id: 4,
+    name: "道",
+    symbol: "",
+    color: "#c8a96a",
+    walkable: true,
+    enemySpawn: false,
+  },
+  [TileType.TOWN]: {
+    id: 5,
+    name: "町",
+    symbol: "🏘",
+    color: "#e8d5a3",
+    walkable: true,
+    enemySpawn: false,
+  },
+  [TileType.DUNGEON]: {
+    id: 6,
+    name: "ダンジョン",
+    symbol: "⚔",
+    color: "#4a3a6a",
+    walkable: true,
+    enemySpawn: false,
+  },
+  [TileType.DESERT]: {
+    id: 7,
+    name: "砂漠",
+    symbol: "🏜",
+    color: "#c8960a",
+    walkable: true,
+    enemySpawn: true,
+  },
+  [TileType.SNOW]: {
+    id: 8,
+    name: "雪原",
+    symbol: "❄",
+    color: "#c8e0f0",
+    walkable: true,
+    enemySpawn: true,
+  },
+  [TileType.PORTAL]: {
+    id: 9,
+    name: "出口",
+    symbol: "🚪",
+    color: "#7c3aed",
+    walkable: true,
+    enemySpawn: false,
+  },
+};
+
+// ── 互換性のための定義（既存コード用）──────────────────────────────────────
 export const MAP_TILE_COLORS: Record<number, string> = {
   0: "#4a7c59",
   1: "#3a7bd5",
@@ -67,7 +175,37 @@ export const MAP_TILE_NAMES: Record<number, string> = {
   9: "🚪 出口",
 };
 
-export const WALKABLE_TILES = new Set([0, 4, 5, 6, 7, 8, 9]);
+export const WALKABLE_TILES = new Set([
+  TileType.GRASS,
+  TileType.ROAD,
+  TileType.TOWN,
+  TileType.DUNGEON,
+  TileType.DESERT,
+  TileType.SNOW,
+  TileType.PORTAL,
+]);
+
+// ── マップID定数 ───────────────────────────────────────────────────────────
+export const MAP_IDS = {
+  ELDARIA_PLAINS: "map-001",
+  CALDA_DESERT: "map-002",
+  FROSTHEIM: "map-003",
+  MILWOOD_FOREST: "map-004",
+  VOLCANOS: "map-005",
+  ABYSS: "map-006",
+  DEMON_CASTLE: "map-007",
+  UNDERWATER: "map-008",
+  SKY_TEMPLE: "map-009",
+  ICE_TEMPLE: "map-010",
+  POISON_SWAMP: "map-011",
+  ANCIENT_RUINS: "map-012",
+  DRAGON_LAIR: "map-013",
+  LIGHT_SANCTUARY: "map-014",
+  DARK_TEMPLE: "map-015",
+  CELESTIAL_SANCTUARY: "map-016",
+  DEEP_SEA: "map-017",
+  ICE_CAVERN: "map-018",
+} as const;
 
 // ── 型定義 ────────────────────────────────────────────────────────────────
 export interface MapTransition {
@@ -84,7 +222,7 @@ export interface MapMasterData {
   name: string;
   description: string;
   emoji: string;
-  enemySpawnTiles: number[];
+  enemySpawnTiles: TileType[];
   /** このマップに出現する敵の ID リスト */
   enemyIds: string[];
   /** 出現する敵の基準レベル */
@@ -116,7 +254,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "エルダリア平原",
     description: "主都アルバスの里を擁する冒険者の起点。草原・森・砂漠の縁が広がる初心者向けエリア。",
     emoji: "🌿",
-    enemySpawnTiles: [0, 7, 8],
+    enemySpawnTiles: [TileType.GRASS, TileType.DESERT, TileType.SNOW],
     enemyIds: [
       "e-001", // スライム
       "e-020", // ヘドロスライム
@@ -155,7 +293,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "カルダ砂漠",
     description: "伝説の戦士カルダの名を冠した灼熱の砂漠。カルダシティとカルダ旧市街が砂の中に建つ。",
     emoji: "🏜",
-    enemySpawnTiles: [7, 0],
+    enemySpawnTiles: [TileType.DESERT, TileType.GRASS],
     townIds: ["town-005", "town-002", "town-004", "town-009"],
     townTileMappings: [
       { row: 6, col: 10, townId: "town-005" }, // カルダシティ
@@ -189,7 +327,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "フロストハイム雪原",
     description: "北方語で「霜の故郷」を意味する永久凍土。",
     emoji: "❄",
-    enemySpawnTiles: [0, 7, 8],
+    enemySpawnTiles: [TileType.GRASS, TileType.DESERT, TileType.SNOW],
     townIds: ["town-007", "town-008", "town-012"],
     townTileMappings: [
       { row: 4, col: 5, townId: "town-007" }, // フロスト村
@@ -221,7 +359,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "ミルウッドの深森",
     description: "千年の古木が茂る神秘の森。精霊が宿ると言われる。",
     emoji: "🌲",
-    enemySpawnTiles: [0, 7, 8],
+    enemySpawnTiles: [TileType.GRASS, TileType.DESERT, TileType.SNOW],
     townIds: ["town-006", "town-013"],
     townTileMappings: [
       { row: 3, col: 2, townId: "town-006" }, // 隠し里エルーン
@@ -256,7 +394,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "ヴォルカノス火山帯",
     description: "活火山ヴォルカノスを中心とした危険な溶岩地帯。",
     emoji: "🌋",
-    enemySpawnTiles: [7, 0],
+    enemySpawnTiles: [TileType.DESERT, TileType.GRASS],
     townIds: ["town-008", "town-014"],
     townTileMappings: [
       { row: 10, col: 14, townId: "town-008" }, // 灰の砦アシュフォード
@@ -288,7 +426,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "セレスティア聖域",
     description: "天空に最も近い聖なる高地。光の都エンシェントを抜けた先に、天空神殿が聳え立つ。",
     emoji: "✨",
-    enemySpawnTiles: [0, 8],
+    enemySpawnTiles: [TileType.GRASS, TileType.SNOW],
     enemyIds: [
       "e-014", // スズメ
       "e-015", // タカ
@@ -316,7 +454,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "アビスの奈落",
     description: "底の見えない地下迷宮。闇の魔物が巣食う禁断の深淵。前線基地を拠点に勇者たちが挑む。",
     emoji: "🕳",
-    enemySpawnTiles: [6],
+    enemySpawnTiles: [TileType.DUNGEON],
     enemyIds: [
       "e-006", // スケルトン
       "e-026", // ボーンアーチャー
@@ -349,7 +487,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "海底神殿",
     description: "エルダリア平原の西岸から潜った先にある古代の水中遺跡。深海の宝珠が眠ると伝わる。",
     emoji: "🌊",
-    enemySpawnTiles: [6, 0],
+    enemySpawnTiles: [TileType.DUNGEON, TileType.GRASS],
     townIds: ["town-011"],
     townTileMappings: [
       { row: 5, col: 5, townId: "town-011" }, // 海底の砦
@@ -379,7 +517,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "天空聖殿",
     description: "セレスティア聖域の先にある雲上の神殿。天使と光の守護者が棲まう聖なる場所。",
     emoji: "🌟",
-    enemySpawnTiles: [0, 8],
+    enemySpawnTiles: [TileType.GRASS, TileType.SNOW],
     townIds: ["town-018"],
     townTileMappings: [
       { row: 6, col: 3, townId: "town-018" }, // 天空の城塞
@@ -409,7 +547,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "魔王城",
     description: "アビスの奈落の最深部に佇む魔王の居城。最強の魔物たちが守護する究極の試練の場。",
     emoji: "👿",
-    enemySpawnTiles: [6],
+    enemySpawnTiles: [TileType.DUNGEON],
     townIds: ["town-019"],
     townTileMappings: [
       { row: 11, col: 8, townId: "town-019" }, // 奈落の前哨基地
@@ -441,7 +579,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "毒の沼地",
     description: "ミルウッドの深森を抜けた先に広がる毒に満ちた暗い湿地帯。毒の魔物が闊歩する。",
     emoji: "☠️",
-    enemySpawnTiles: [0, 6],
+    enemySpawnTiles: [TileType.GRASS, TileType.DUNGEON],
     townIds: ["town-012"],
     townTileMappings: [
       { row: 5, col: 7, townId: "town-012" }, // 沼地の番小屋
@@ -471,7 +609,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "氷の魔窟",
     description: "フロストハイム雪原の奥に口を開く巨大な氷窟。古代スケルトンや氷のゴーレムが待ち受ける。",
     emoji: "🧊",
-    enemySpawnTiles: [6, 8],
+    enemySpawnTiles: [TileType.DUNGEON, TileType.SNOW],
     townIds: ["town-015"],
     townTileMappings: [
       { row: 1, col: 10, townId: "town-015" }, // 氷窟の灯台
@@ -500,7 +638,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "竜の棲み処",
     description: "ヴォルカノス火山帯の深部にある古竜たちの聖域。猛烈な熱気と炎に満ちた試練の地。",
     emoji: "🐲",
-    enemySpawnTiles: [7, 0, 6],
+    enemySpawnTiles: [TileType.DESERT, TileType.GRASS, TileType.DUNGEON],
     townIds: ["town-016", "town-017"],
     townTileMappings: [
       { row: 5,  col: 10, townId: "town-016" }, // 竜の里
@@ -532,7 +670,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "深海の底",
     description: "海底神殿の最深部に広がる未知の深海世界。深海の魔魚や海底の亡霊が棲む神秘の場所。",
     emoji: "🌊",
-    enemySpawnTiles: [6, 0],
+    enemySpawnTiles: [TileType.DUNGEON, TileType.GRASS],
     townIds: ["town-020"],
     townTileMappings: [
       { row: 5, col: 5, townId: "town-020" }, // 深海基地
@@ -561,7 +699,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "光の聖域",
     description: "天空聖殿の更に高みにある純粋な光に満ちた神域。光の天使と聖光の騎士が守護する。",
     emoji: "💛",
-    enemySpawnTiles: [0, 8],
+    enemySpawnTiles: [TileType.GRASS, TileType.SNOW],
     townIds: ["town-021"],
     townTileMappings: [
       { row: 5, col: 6, townId: "town-021" }, // 光の聖堂
@@ -590,7 +728,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "闇の神殿",
     description: "魔王城の深部に潜む究極の暗黒の神殿。闇の大魔神と奈落の怪物が君臨する最終試練の地。",
     emoji: "🖤",
-    enemySpawnTiles: [6],
+    enemySpawnTiles: [TileType.DUNGEON],
     townIds: ["town-022"],
     townTileMappings: [
       { row: 10, col: 10, townId: "town-022" }, // 闇の前哨砦
@@ -621,7 +759,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "古代の神殿",
     description: "毒の沼地の奥深くに眠る太古の神殿遺跡。古代の番人と石像の守護者が遺産を守る。",
     emoji: "🏛️",
-    enemySpawnTiles: [0, 6],
+    enemySpawnTiles: [TileType.GRASS, TileType.DUNGEON],
     townIds: ["town-023"],
     townTileMappings: [
       { row: 11, col: 11, townId: "town-023" }, // 古代神殿の門前
@@ -649,7 +787,7 @@ export const MAP_MASTER: MapMasterData[] = [
     name: "氷雪神殿",
     description: "氷の魔窟の奥に広がる神聖な氷の神殿。雪の女王と白竜が支配する永遠の氷河の地。",
     emoji: "❄️",
-    enemySpawnTiles: [8, 6],
+    enemySpawnTiles: [TileType.SNOW, TileType.DUNGEON],
     townIds: ["town-024"],
     townTileMappings: [
       { row: 5, col: 10, townId: "town-024" }, // 氷神殿の入口

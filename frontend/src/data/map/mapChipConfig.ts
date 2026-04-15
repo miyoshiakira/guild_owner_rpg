@@ -8,30 +8,16 @@
  * ※ FieldPage の TILE_SIZE (48px) にスケーリングして描画する
  */
 
+import { TileType } from "../masters/mapMaster";
+
 export const CHIP_SHEET_COLS = 20;   // スプライトシートの横タイル数
 export const CHIP_SRC_SIZE   = 100;  // 元スプライトの 1 タイルサイズ (px)
 
 /**
- * マップタイルの種類
- */
-export type MapTileType =
-  | "grassland"   // 草原
-  | "water"       // 水
-  | "forest"      // 森
-  | "rock"        // 岩場
-  | "road"        // 道
-  | "town"        // 町
-  | "dungeon"     // ダンジョン
-  | "desert"      // 砂漠
-  | "snow"        // 雪原
-  | "portal";     // 出口ポータル
-
-/**
- * マップタイルの定義
+ * マップタイルの定義（スプライトシート用）
  */
 export interface MapTileConfig {
   id: number;
-  type: MapTileType;
   name: string;
   chipPos: readonly [number, number];
   walkable: boolean; // 進行可能かどうか
@@ -39,19 +25,36 @@ export interface MapTileConfig {
 }
 
 /**
- * マップタイルマスタ
+ * マップタイルマスタ（互換性維持: 数値キー）
  */
 export const MAP_TILE_MASTER: Record<number, MapTileConfig> = {
-  0: { id: 0, type: "grassland", name: "草原", chipPos: [0, 0], walkable: true, color: "rgb(149,187,31)" },
-  1: { id: 1, type: "water", name: "水", chipPos: [0, 3], walkable: false, color: "rgb(46,193,255)" },
-  2: { id: 2, type: "forest", name: "森", chipPos: [0, 5], walkable: true, color: "rgb(39,97,29)" },
-  3: { id: 3, type: "rock", name: "岩場", chipPos: [0, 4], walkable: false, color: "rgb(67,67,67)" },
-  4: { id: 4, type: "road", name: "道", chipPos: [0, 1], walkable: true, color: "rgb(168,147,87)" },
-  5: { id: 5, type: "town", name: "町", chipPos: [0, 6], walkable: true, color: "rgb(213,183,117)" },
-  6: { id: 6, type: "dungeon", name: "ダンジョン", chipPos: [0, 1], walkable: true, color: "rgb(107,75,38)" },
-  7: { id: 7, type: "desert", name: "砂漠", chipPos: [0, 8], walkable: true, color: "rgb(248,215,129)" },
-  8: { id: 8, type: "snow", name: "雪原", chipPos: [0, 2], walkable: true, color: "rgb(235,235,237)" },
-  9: { id: 9, type: "portal", name: "出口ポータル", chipPos: [0, 7], walkable: true, color: "rgb(138,118,210)" },
+  0: { id: 0, name: "草原", chipPos: [0, 0], walkable: true, color: "rgb(149,187,31)" },
+  1: { id: 1, name: "水", chipPos: [0, 3], walkable: false, color: "rgb(46,193,255)" },
+  2: { id: 2, name: "森", chipPos: [0, 5], walkable: true, color: "rgb(39,97,29)" },
+  3: { id: 3, name: "岩場", chipPos: [0, 4], walkable: false, color: "rgb(67,67,67)" },
+  4: { id: 4, name: "道", chipPos: [0, 1], walkable: true, color: "rgb(168,147,87)" },
+  5: { id: 5, name: "町", chipPos: [0, 6], walkable: true, color: "rgb(213,183,117)" },
+  6: { id: 6, name: "ダンジョン", chipPos: [0, 1], walkable: true, color: "rgb(107,75,38)" },
+  7: { id: 7, name: "砂漠", chipPos: [0, 8], walkable: true, color: "rgb(248,215,129)" },
+  8: { id: 8, name: "雪原", chipPos: [0, 2], walkable: true, color: "rgb(235,235,237)" },
+  9: { id: 9, name: "出口ポータル", chipPos: [0, 7], walkable: true, color: "rgb(138,118,210)" },
+};
+
+/**
+ * マップタイルマスタ（TileType enumキー版）
+ * 新規コードではこちらを使用してください
+ */
+export const MAP_TILE_MASTER_BY_TYPE: Record<TileType, MapTileConfig> = {
+  [TileType.GRASS]: MAP_TILE_MASTER[0],
+  [TileType.WATER]: MAP_TILE_MASTER[1],
+  [TileType.FOREST]: MAP_TILE_MASTER[2],
+  [TileType.ROCK]: MAP_TILE_MASTER[3],
+  [TileType.ROAD]: MAP_TILE_MASTER[4],
+  [TileType.TOWN]: MAP_TILE_MASTER[5],
+  [TileType.DUNGEON]: MAP_TILE_MASTER[6],
+  [TileType.DESERT]: MAP_TILE_MASTER[7],
+  [TileType.SNOW]: MAP_TILE_MASTER[8],
+  [TileType.PORTAL]: MAP_TILE_MASTER[9],
 };
 
 /**
