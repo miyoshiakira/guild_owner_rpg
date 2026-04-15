@@ -144,7 +144,6 @@ export interface StoryEvent {
   mapId: string;              // 発生マップID
   position: { row: number; col: number }; // マップ上の位置
   trigger: "step" | "interact"; // トリガータイプ（踏む/話す）
-  prerequisites?: string[];   // 前提フラグ（これらのフラグが立っていないと非表示）
   conditions: EventCondition[]; // 発生条件
   data: EventData;            // イベントデータ
   repeatable: boolean;        // 繰り返し可能か

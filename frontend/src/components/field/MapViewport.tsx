@@ -2,8 +2,10 @@ import { useRef } from "react";
 import { Box } from "@mui/material";
 import type { MapMasterData } from "../../data/masters/mapMaster";
 import type { StoryEvent } from "../../types/masters";
+import type { GameState } from "../../types/game";
 import { TILE_CHIP_POS, CHIP_SHEET_COLS, CHIP_SRC_SIZE } from "../../data/map/mapChipConfig";
 import mapChipUrl from "../../data/map/BaseMapChip.png";
+import { getActivatableEvent } from "../../hooks/useEventHandlers";
 
 const TILE_SIZE = 48;
 const VIEWPORT_TILES = 7;
@@ -16,11 +18,13 @@ interface MapViewportProps {
   playerPos: PlayerPos;
   onSwipe: (dr: number, dc: number) => void;
   currentMap: MapMasterData;
+  mapId: string;
+  gameState: GameState;
   events: StoryEvent[];
   storyFlags: Record<string, boolean>;
 }
 
-export default function MapViewport({ playerPos, onSwipe, currentMap, events, storyFlags }: MapViewportProps) {
+export default function MapViewport({ playerPos, onSwipe, currentMap, mapId, gameState, events, storyFlags }: MapViewportProps) {
   const tileMap = currentMap.tileMap;
   const MAP_ROWS = tileMap.length;
   const MAP_COLS = tileMap[0]!.length;
@@ -87,25 +91,7 @@ export default function MapViewport({ playerPos, onSwipe, currentMap, events, st
             const chipBgY = -(chip[0] * TILE_SIZE);
             const sheetDisplayW = CHIP_SHEET_COLS * TILE_SIZE;
             const sheetDisplayH = Math.round((1000 / CHIP_SRC_SIZE) * TILE_SIZE);
-            const eventAtTile = events.find(e => e.position.row === r && e.position.col === c);
-            const shouldHideEvent = eventAtTile && (() => {
-              const eventData = eventAtTile.data;
-              if (eventData.type === "battle") {
-                const flagReward = eventData.winRewards?.find(r => r.type === "flag");
-                if (flagReward && flagReward.flag) {
-                  return storyFlags[flagReward.flag] === true;
-                }
-              }
-              if (eventData.type === "conversation") {
-                const hasFlagReward = eventData.choices?.some(c => c.rewards?.some(r => r.type === "flag"));
-                if (hasFlagReward) {
-                  return eventData.choices!.some(c =>
-                    c.rewards?.some(r => r.type === "flag" && storyFlags[r.flag!] === true)
-                  );
-                }
-              }
-              return false;
-            })();
+            const eventTile = getActivatableEvent(mapId, r, c, gameState);
             return (
               <Box
                 key={`${r}-${c}`}
@@ -130,20 +116,20 @@ export default function MapViewport({ playerPos, onSwipe, currentMap, events, st
                   position: "relative",
                 }}
               >
-                {eventAtTile && !shouldHideEvent && (
+                {eventTile && (
                   <Box
                     component="span"
                     sx={{
                       position: "absolute",
                       fontSize: 26,
                       animation: "event-pulse 2s ease-in-out infinite",
-                      filter: eventAtTile.data.type === "battle"
+                      filter: eventTile.data.type === "battle"
                         ? "drop-shadow(0 0 8px rgba(255,80,80,0.9))"
                         : "drop-shadow(0 0 8px rgba(255,215,0,0.8))",
                       zIndex: 1,
                     }}
                   >
-                    {eventAtTile.data.type === "battle" ? "⚔️" : "💬"}
+                    {eventTile.data.type === "battle" ? "⚔️" : "💬"}
                   </Box>
                 )}
                 {isPlayer && (

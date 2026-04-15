@@ -24,7 +24,8 @@ import FieldHeader from "../components/field/FieldHeader";
 import EventModal from "../components/EventModal";
 import CircularDPad from "../components/field/CircularDPad";
 import MapViewport from "../components/field/MapViewport";
-import { getEventsByMap, getEventAtPosition } from "../data/masters/storyEventMaster";
+import { getEventsByMap } from "../data/masters/storyEventMaster";
+import { getActivatableEvent } from "../hooks/useEventHandlers";
 import { mapLevel, scaleEnemy } from "../utils/fieldUtils";
 import { filterVisibleEvents } from "../utils/eventFilter";
 import { TOWN_MAP } from "../data/masters/townMaster";
@@ -171,15 +172,8 @@ export default function FieldPage() {
     }
 
     // イベントチェック（遷移マスでない場合のみ）
-    const events = getEventsByMap(map.id);
-    const event = events.find(e => e.position.row === nr && e.position.col === nc && e.trigger === "step");
-    if (event && !state.storyProgress.completedEvents.includes(event.id)) {
-      // 前提フラグをチェック
-      if (event.prerequisites) {
-        const hasPrerequisites = event.prerequisites.every(flag => state.storyFlags[flag] === true);
-        if (!hasPrerequisites) return;
-      }
-      // 簡易的な条件チェック（TODO: 完全な条件チェックを実装）
+    const event = getActivatableEvent(map.id, nr, nc, state, "step");
+    if (event) {
       setTimeout(() => {
         setCurrentEventId(event.id);
         setShowEventModal(true);
@@ -234,16 +228,7 @@ export default function FieldPage() {
   const currentTown = getCurrentTown();
 
   // interact イベントのチェック
-  const getInteractEvent = () => {
-    const eventsAtPos = getEventAtPosition(currentMapId, playerPos.row, playerPos.col);
-    const result = eventsAtPos.find(
-      e => e.trigger === "interact" &&
-      !state.storyProgress.completedEvents.includes(e.id)
-    );
-    console.log(result);
-    return result;
-  };
-  const interactEvent = getInteractEvent();
+  const interactEvent = getActivatableEvent(currentMapId, playerPos.row, playerPos.col, state, "interact");
 
   const handleShop = () => {
     setShowTownModal(false);
@@ -302,6 +287,8 @@ export default function FieldPage() {
             playerPos={playerPos}
             onSwipe={tryMove}
             currentMap={currentMap}
+            mapId={currentMapId}
+            gameState={state}
             events={filterVisibleEvents(
               getEventsByMap(currentMapId),
               state.storyProgress.completedEvents,
