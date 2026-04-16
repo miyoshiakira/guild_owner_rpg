@@ -6,6 +6,9 @@
  *   8=雪原       9=出口ポータル
  */
 
+import mapTransitionsJson from './mapTransitions.json';
+import mapMasterAdditionsJson from './mapMasterAdditions.json';
+
 import {
   MAP1_TILES,
   MAP2_TILES,
@@ -215,7 +218,13 @@ export interface MapTransition {
   toRow: number;
   toCol: number;
   label: string;
+  /** 世界地図・地域地図に接続線として表示するか（省略時 true） */
+  showOnWorldMap?: boolean;
 }
+
+/** mapTransitions.json から読み込んだ全マップのトランジションデータ */
+export const MAP_TRANSITIONS: Record<string, MapTransition[]> =
+  mapTransitionsJson as Record<string, MapTransition[]>;
 
 export interface MapMasterData {
   id: string;
@@ -245,10 +254,17 @@ export interface TownTileMapping {
   townId: string;
 }
 
+/** mapMasterAdditions.json で追加されたマップの型（tileMap を JSON 配列として保持） */
+export type MapMasterAddition = Omit<MapMasterData, 'transitions'>;
+
+/** JSON から読み込んだ追加マップ一覧 */
+export const MAP_ADDITIONS: MapMasterAddition[] =
+  mapMasterAdditionsJson as MapMasterAddition[];
+
 // ══════════════════════════════════════════════════════════════════════════
 // マップマスタ定義
 // ══════════════════════════════════════════════════════════════════════════
-export const MAP_MASTER: MapMasterData[] = [
+const STATIC_MAP_MASTER: MapMasterData[] = [
   {
     id: "map-001",
     name: "エルダリア平原",
@@ -279,13 +295,7 @@ export const MAP_MASTER: MapMasterData[] = [
       { row: 15, col: 4, townId: "town-003" }, // 漁師村ラグナ
       { row: 14, col: 18, townId: "town-004" }, // 砂漠の砦スエズ
     ],
-    transitions: [
-      { fromRow: 2,  fromCol: 14, toMapId: "map-003", toRow: 19, toCol: 9,  label: "❄ フロストハイム雪原へ…" },
-      { fromRow: 14, fromCol: 19, toMapId: "map-002", toRow: 1,  toCol: 1,  label: "🏜 カルダ砂漠へ…" },
-      { fromRow: 10, fromCol: 0,  toMapId: "map-004", toRow: 10, toCol: 18, label: "🌲 ミルウッドの深森へ…" },
-      { fromRow: 19, fromCol: 5,  toMapId: "map-005", toRow: 1,  toCol: 10, label: "🌋 ヴォルカノス火山帯へ…" },
-      { fromRow: 7,  fromCol: 0,  toMapId: "map-008", toRow: 0,  toCol: 11, label: "🌊 海底神殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-001"] ?? [],
     tileMap: MAP1_TILES,
   },
   {
@@ -316,10 +326,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 5,
     levelVariance: 5,
     defaultPos: { row: 1, col: 1 },
-    transitions: [
-      { fromRow: 0,  fromCol: 0,  toMapId: "map-001", toRow: 14, toCol: 18, label: "🌿 エルダリア平原へ…" },
-      { fromRow: 19, fromCol: 19, toMapId: "map-007", toRow: 0,  toCol: 1,  label: "🕳 アビスの奈落へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-002"] ?? [],
     tileMap: MAP2_TILES,
   },
   {
@@ -347,11 +354,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 5,
     levelVariance: 4,
     defaultPos: { row: 4, col: 5 },
-    transitions: [
-      { fromRow: 19, fromCol: 10, toMapId: "map-001", toRow: 2,  toCol: 13, label: "🌿 エルダリア平原へ…" },
-      { fromRow: 0,  fromCol: 10, toMapId: "map-006", toRow: 18, toCol: 10, label: "✨ セレスティア聖域へ…" },
-      { fromRow: 0,  fromCol: 0,  toMapId: "map-012", toRow: 19, toCol: 11, label: "🧊 氷の魔窟へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-003"] ?? [],
     tileMap: MAP3_TILES,
   },
   {
@@ -383,10 +386,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 3,
     levelVariance: 5,
     defaultPos: { row: 10, col: 18 },
-    transitions: [
-      { fromRow: 10, fromCol: 19, toMapId: "map-001", toRow: 10, toCol: 1, label: "🌿 エルダリア平原へ…" },
-      { fromRow: 19, fromCol: 4,  toMapId: "map-011", toRow: 0,  toCol: 10, label: "☠️ 毒の沼地へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-004"] ?? [],
     tileMap: MAP4_TILES,
   },
   {
@@ -415,10 +415,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 8,
     levelVariance: 6,
     defaultPos: { row: 1, col: 10 },
-    transitions: [
-      { fromRow: 0,  fromCol: 10, toMapId: "map-001", toRow: 18, toCol: 5,  label: "🌿 エルダリア平原へ…" },
-      { fromRow: 19, fromCol: 5,  toMapId: "map-013", toRow: 0,  toCol: 10, label: "🐲 竜の棲み処へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-005"] ?? [],
     tileMap: MAP5_TILES,
   },
   {
@@ -443,10 +440,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 12,
     levelVariance: 7,
     defaultPos: { row: 18, col: 10 },
-    transitions: [
-      { fromRow: 19, fromCol: 10, toMapId: "map-003", toRow: 1,  toCol: 10, label: "❄ フロストハイム雪原へ…" },
-      { fromRow: 0,  fromCol: 4,  toMapId: "map-009", toRow: 19, toCol: 10, label: "🌟 天空聖殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-006"] ?? [],
     tileMap: MAP6_TILES,
   },
   {
@@ -474,10 +468,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 15,
     levelVariance: 10,
     defaultPos: { row: 0, col: 1 },
-    transitions: [
-      { fromRow: 0,  fromCol: 0,  toMapId: "map-002", toRow: 18, toCol: 19, label: "🏜 カルダ砂漠へ…" },
-      { fromRow: 19, fromCol: 19, toMapId: "map-010", toRow: 0,  toCol: 18, label: "👿 魔王城へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-007"] ?? [],
     tileMap: MAP7_TILES,
   },
 
@@ -506,10 +497,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 10,
     levelVariance: 5,
     defaultPos: { row: 0, col: 1 },
-    transitions: [
-      { fromRow: 0,  fromCol: 10, toMapId: "map-001", toRow: 7,  toCol: 1,  label: "🌿 エルダリア平原へ…" },
-      { fromRow: 19, fromCol: 10, toMapId: "map-014", toRow: 0,  toCol: 10, label: "🌊 深海の底へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-008"] ?? [],
     tileMap: MAP8_TILES,
   },
   {
@@ -536,10 +524,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 16,
     levelVariance: 6,
     defaultPos: { row: 19, col: 10 },
-    transitions: [
-      { fromRow: 19, fromCol: 11, toMapId: "map-006", toRow: 0,  toCol: 4,  label: "✨ セレスティア聖域へ…" },
-      { fromRow: 0,  fromCol: 0,  toMapId: "map-015", toRow: 19, toCol: 10, label: "💛 光の聖域へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-009"] ?? [],
     tileMap: MAP9_TILES,
   },
   {
@@ -568,10 +553,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 20,
     levelVariance: 8,
     defaultPos: { row: 0, col: 18 },
-    transitions: [
-      { fromRow: 0,  fromCol: 19, toMapId: "map-007", toRow: 19, toCol: 18, label: "🕳 アビスの奈落へ…" },
-      { fromRow: 19, fromCol: 0,  toMapId: "map-016", toRow: 0,  toCol: 10, label: "🖤 闇の神殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-010"] ?? [],
     tileMap: MAP10_TILES,
   },
   {
@@ -598,10 +580,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 6,
     levelVariance: 4,
     defaultPos: { row: 0, col: 11 },
-    transitions: [
-      { fromRow: 0,  fromCol: 10, toMapId: "map-004", toRow: 19, toCol: 4,  label: "🌲 ミルウッドの深森へ…" },
-      { fromRow: 19, fromCol: 10, toMapId: "map-017", toRow: 0,  toCol: 10, label: "🏛️ 古代の神殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-011"] ?? [],
     tileMap: MAP11_TILES,
   },
   {
@@ -627,10 +606,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 10,
     levelVariance: 5,
     defaultPos: { row: 1, col: 11 },
-    transitions: [
-      { fromRow: 19, fromCol: 11, toMapId: "map-003", toRow: 0,  toCol: 0,  label: "❄ フロストハイム雪原へ…" },
-      { fromRow: 0,  fromCol: 10, toMapId: "map-018", toRow: 19, toCol: 10, label: "❄ 氷雪神殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-012"] ?? [],
     tileMap: MAP12_TILES,
   },
   {
@@ -658,9 +634,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 14,
     levelVariance: 6,
     defaultPos: { row: 0, col: 11 },
-    transitions: [
-      { fromRow: 0, fromCol: 10, toMapId: "map-005", toRow: 19, toCol: 5, label: "🌋 ヴォルカノス火山帯へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-013"] ?? [],
     tileMap: MAP13_TILES,
   },
 
@@ -689,9 +663,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 15,
     levelVariance: 8,
     defaultPos: { row: 0, col: 9 },
-    transitions: [
-      { fromRow: 0, fromCol: 10, toMapId: "map-008", toRow: 19, toCol: 10, label: "🌊 海底神殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-014"] ?? [],
     tileMap: MAP14_TILES,
   },
   {
@@ -718,9 +690,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 22,
     levelVariance: 8,
     defaultPos: { row: 19, col: 9 },
-    transitions: [
-      { fromRow: 19, fromCol: 10, toMapId: "map-009", toRow: 0, toCol: 1, label: "🌟 天空聖殿へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-015"] ?? [],
     tileMap: MAP15_TILES,
   },
   {
@@ -749,9 +719,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 28,
     levelVariance: 8,
     defaultPos: { row: 0, col: 9 },
-    transitions: [
-      { fromRow: 0, fromCol: 10, toMapId: "map-010", toRow: 19, toCol: 1, label: "👿 魔王城へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-016"] ?? [],
     tileMap: MAP16_TILES,
   },
   {
@@ -777,9 +745,7 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 9,
     levelVariance: 7,
     defaultPos: { row: 0, col: 9 },
-    transitions: [
-      { fromRow: 0, fromCol: 10, toMapId: "map-011", toRow: 19, toCol: 10, label: "☠️ 毒の沼地へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-017"] ?? [],
     tileMap: MAP17_TILES,
   },
   {
@@ -805,11 +771,19 @@ export const MAP_MASTER: MapMasterData[] = [
     baseLevel: 16,
     levelVariance: 8,
     defaultPos: { row: 19, col: 9 },
-    transitions: [
-      { fromRow: 19, fromCol: 10, toMapId: "map-012", toRow: 0, toCol: 9, label: "🧊 氷の魔窟へ…" },
-    ],
+    transitions: MAP_TRANSITIONS["map-018"] ?? [],
     tileMap: MAP18_TILES,
   },
+];
+
+/** 静的マップ + additions をマージした全マップリスト */
+export const MAP_MASTER: MapMasterData[] = [
+  ...STATIC_MAP_MASTER,
+  ...MAP_ADDITIONS.map(m => ({
+    ...m,
+    enemySpawnTiles: m.enemySpawnTiles as TileType[],
+    transitions: MAP_TRANSITIONS[m.id] ?? [],
+  })),
 ];
 
 export const MAP_MASTER_MAP: Record<string, MapMasterData> = Object.fromEntries(

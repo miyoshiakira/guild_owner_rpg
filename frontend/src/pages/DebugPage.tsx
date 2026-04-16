@@ -1,5 +1,7 @@
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Button } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
+import StorageIcon from "@mui/icons-material/Storage";
+import PublicIcon from "@mui/icons-material/Public";
 import { STORY_EVENT_MASTER } from "../data/masters/storyEventMaster";
 import { MAP_MASTER_MAP } from "../data/masters/mapMaster";
 import { MAP_TILE_MASTER } from "../data/map/mapChipConfig";
@@ -47,6 +49,20 @@ export default function DebugPage() {
           onClick={() => dispatch({ type: "SET_SCENE", payload: "mapeditor" })}
         >
           マップエディタ
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<StorageIcon />}
+          onClick={() => dispatch({ type: "SET_SCENE", payload: "masterEditor" })}
+        >
+          マスタ編集
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<PublicIcon />}
+          onClick={() => dispatch({ type: "SET_SCENE", payload: "worldEditor" })}
+        >
+          地図編集
         </Button>
       </Box>
 

@@ -3,7 +3,7 @@
 export type SyncStatus = "synced" | "pending" | "offline";
 export type MonsterType = "水" | "地" | "光" | "炎" | "闇";
 export type ItemType = "消耗品" | "武器" | "防具" | "特殊";
-export type Scene = "login" | "guild" | "field" | "battle" | "items" | "craft" | "debug" | "mapeditor";
+export type Scene = "login" | "guild" | "field" | "battle" | "items" | "craft" | "debug" | "mapeditor" | "masterEditor" | "worldEditor";
 export type NotificationSeverity = "success" | "error" | "warning" | "info";
 export type EquipSlot = "weapon" | "armor" | "accessory";
 

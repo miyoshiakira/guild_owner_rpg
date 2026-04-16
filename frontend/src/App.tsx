@@ -13,6 +13,8 @@ import ItemsPage from "./pages/ItemsPage";
 import CraftPage from "./pages/CraftPage";
 import DebugPage from "./pages/DebugPage";
 import MapEditorPage from "./pages/MapEditorPage";
+import MasterEditorPage from "./pages/MasterEditorPage";
+import WorldMapEditorPage from "./pages/WorldMapEditorPage";
 
 /** BGM キャッシュが完了するまでダウンロード画面を表示する */
 function BgmGate({ children }: { children: ReactNode }) {
@@ -27,6 +29,8 @@ function GameRouter() {
 
   if (scene === "login") return <LoginPage />;
   if (scene === "mapeditor") return <MapEditorPage />;
+  if (scene === "masterEditor") return <MasterEditorPage />;
+  if (scene === "worldEditor") return <WorldMapEditorPage />;
   if (scene === "battle") return (
     <AppLayout>
       <BattlePage />
