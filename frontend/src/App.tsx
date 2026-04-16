@@ -12,6 +12,7 @@ import BattlePage from "./pages/BattlePage";
 import ItemsPage from "./pages/ItemsPage";
 import CraftPage from "./pages/CraftPage";
 import DebugPage from "./pages/DebugPage";
+import MapEditorPage from "./pages/MapEditorPage";
 
 /** BGM キャッシュが完了するまでダウンロード画面を表示する */
 function BgmGate({ children }: { children: ReactNode }) {
@@ -25,6 +26,7 @@ function GameRouter() {
   const { scene } = state;
 
   if (scene === "login") return <LoginPage />;
+  if (scene === "mapeditor") return <MapEditorPage />;
   if (scene === "battle") return (
     <AppLayout>
       <BattlePage />

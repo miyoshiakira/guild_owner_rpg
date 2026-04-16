@@ -1,9 +1,13 @@
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip } from "@mui/material";
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Button } from "@mui/material";
+import MapIcon from "@mui/icons-material/Map";
 import { STORY_EVENT_MASTER } from "../data/masters/storyEventMaster";
 import { MAP_MASTER_MAP } from "../data/masters/mapMaster";
 import { MAP_TILE_MASTER } from "../data/map/mapChipConfig";
+import { useGame } from "../store/gameStore";
 
 export default function DebugPage() {
+  const { dispatch } = useGame();
+
   const conflicts: Array<{
     event: typeof STORY_EVENT_MASTER[0];
     mapName: string;
@@ -33,9 +37,18 @@ export default function DebugPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        イベント位置デバッグ
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+        <Typography variant="h4">
+          イベント位置デバッグ
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<MapIcon />}
+          onClick={() => dispatch({ type: "SET_SCENE", payload: "mapeditor" })}
+        >
+          マップエディタ
+        </Button>
+      </Box>
 
       <Typography variant="h6" sx={{ mb: 2 }}>
         進行不可能タイル上のイベント: {conflicts.length}件
