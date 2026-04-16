@@ -1,72 +1,330 @@
 {
   "map-001": [
-    { "fromRow": 2,  "fromCol": 14, "toMapId": "map-003", "toRow": 19, "toCol": 9,  "label": "❄ フロストハイム雪原へ…" },
-    { "fromRow": 14, "fromCol": 19, "toMapId": "map-002", "toRow": 1,  "toCol": 1,  "label": "🏜 カルダ砂漠へ…" },
-    { "fromRow": 10, "fromCol": 0,  "toMapId": "map-004", "toRow": 10, "toCol": 18, "label": "🌲 ミルウッドの深森へ…" },
-    { "fromRow": 19, "fromCol": 5,  "toMapId": "map-005", "toRow": 1,  "toCol": 10, "label": "🌋 ヴォルカノス火山帯へ…" },
-    { "fromRow": 7,  "fromCol": 0,  "toMapId": "map-008", "toRow": 0,  "toCol": 11, "label": "🌊 海底神殿へ…" }
+    {
+      "fromRow": 2,
+      "fromCol": 14,
+      "toMapId": "map-003",
+      "toRow": 19,
+      "toCol": 9,
+      "label": "❄ フロストハイム雪原へ…"
+    },
+    {
+      "fromRow": 14,
+      "fromCol": 19,
+      "toMapId": "map-002",
+      "toRow": 1,
+      "toCol": 1,
+      "label": "🏜 カルダ砂漠へ…"
+    },
+    {
+      "fromRow": 10,
+      "fromCol": 0,
+      "toMapId": "map-004",
+      "toRow": 10,
+      "toCol": 18,
+      "label": "🌲 ミルウッドの深森へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 5,
+      "toMapId": "map-005",
+      "toRow": 1,
+      "toCol": 10,
+      "label": "🌋 ヴォルカノス火山帯へ…"
+    },
+    {
+      "fromRow": 7,
+      "fromCol": 0,
+      "toMapId": "map-008",
+      "toRow": 0,
+      "toCol": 11,
+      "label": "🌊 海底神殿へ…"
+    }
   ],
   "map-002": [
-    { "fromRow": 0,  "fromCol": 0,  "toMapId": "map-001", "toRow": 14, "toCol": 18, "label": "🌿 エルダリア平原へ…" },
-    { "fromRow": 19, "fromCol": 19, "toMapId": "map-007", "toRow": 0,  "toCol": 1,  "label": "🕳 アビスの奈落へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 0,
+      "toMapId": "map-001",
+      "toRow": 14,
+      "toCol": 18,
+      "label": "🌿 エルダリア平原へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 19,
+      "toMapId": "map-007",
+      "toRow": 0,
+      "toCol": 1,
+      "label": "🕳 アビスの奈落へ…"
+    }
   ],
   "map-003": [
-    { "fromRow": 19, "fromCol": 10, "toMapId": "map-001", "toRow": 2,  "toCol": 13, "label": "🌿 エルダリア平原へ…" },
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-006", "toRow": 18, "toCol": 10, "label": "✨ セレスティア聖域へ…" },
-    { "fromRow": 0,  "fromCol": 0,  "toMapId": "map-012", "toRow": 19, "toCol": 11, "label": "🧊 氷の魔窟へ…" }
+    {
+      "fromRow": 19,
+      "fromCol": 10,
+      "toMapId": "map-001",
+      "toRow": 2,
+      "toCol": 13,
+      "label": "🌿 エルダリア平原へ…"
+    },
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-006",
+      "toRow": 18,
+      "toCol": 10,
+      "label": "✨ セレスティア聖域へ…"
+    },
+    {
+      "fromRow": 0,
+      "fromCol": 0,
+      "toMapId": "map-012",
+      "toRow": 19,
+      "toCol": 11,
+      "label": "🧊 氷の魔窟へ…"
+    }
   ],
   "map-004": [
-    { "fromRow": 10, "fromCol": 19, "toMapId": "map-001", "toRow": 10, "toCol": 1,  "label": "🌿 エルダリア平原へ…" },
-    { "fromRow": 19, "fromCol": 4,  "toMapId": "map-011", "toRow": 0,  "toCol": 10, "label": "☠️ 毒の沼地へ…" }
+    {
+      "fromRow": 10,
+      "fromCol": 19,
+      "toMapId": "map-001",
+      "toRow": 10,
+      "toCol": 1,
+      "label": "🌿 エルダリア平原へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 4,
+      "toMapId": "map-011",
+      "toRow": 0,
+      "toCol": 10,
+      "label": "☠️ 毒の沼地へ…"
+    }
   ],
   "map-005": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-001", "toRow": 18, "toCol": 5,  "label": "🌿 エルダリア平原へ…" },
-    { "fromRow": 19, "fromCol": 5,  "toMapId": "map-013", "toRow": 0,  "toCol": 10, "label": "🐲 竜の棲み処へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-001",
+      "toRow": 18,
+      "toCol": 5,
+      "label": "🌿 エルダリア平原へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 5,
+      "toMapId": "map-013",
+      "toRow": 0,
+      "toCol": 10,
+      "label": "🐲 竜の棲み処へ…"
+    }
   ],
   "map-006": [
-    { "fromRow": 19, "fromCol": 10, "toMapId": "map-003", "toRow": 1,  "toCol": 10, "label": "❄ フロストハイム雪原へ…" },
-    { "fromRow": 0,  "fromCol": 4,  "toMapId": "map-009", "toRow": 19, "toCol": 10, "label": "🌟 天空聖殿へ…" }
+    {
+      "fromRow": 19,
+      "fromCol": 10,
+      "toMapId": "map-003",
+      "toRow": 1,
+      "toCol": 10,
+      "label": "❄ フロストハイム雪原へ…"
+    },
+    {
+      "fromRow": 0,
+      "fromCol": 4,
+      "toMapId": "map-009",
+      "toRow": 19,
+      "toCol": 10,
+      "label": "🌟 天空聖殿へ…"
+    }
   ],
   "map-007": [
-    { "fromRow": 0,  "fromCol": 0,  "toMapId": "map-002", "toRow": 18, "toCol": 19, "label": "🏜 カルダ砂漠へ…" },
-    { "fromRow": 19, "fromCol": 19, "toMapId": "map-010", "toRow": 0,  "toCol": 18, "label": "👿 魔王城へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 0,
+      "toMapId": "map-002",
+      "toRow": 18,
+      "toCol": 19,
+      "label": "🏜 カルダ砂漠へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 19,
+      "toMapId": "map-010",
+      "toRow": 0,
+      "toCol": 18,
+      "label": "👿 魔王城へ…"
+    }
   ],
   "map-008": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-001", "toRow": 7,  "toCol": 1,  "label": "🌿 エルダリア平原へ…" },
-    { "fromRow": 19, "fromCol": 10, "toMapId": "map-014", "toRow": 0,  "toCol": 10, "label": "🌊 深海の底へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-001",
+      "toRow": 7,
+      "toCol": 1,
+      "label": "🌿 エルダリア平原へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 10,
+      "toMapId": "map-014",
+      "toRow": 0,
+      "toCol": 10,
+      "label": "🌊 深海の底へ…"
+    }
   ],
   "map-009": [
-    { "fromRow": 19, "fromCol": 11, "toMapId": "map-006", "toRow": 0,  "toCol": 4,  "label": "✨ セレスティア聖域へ…" },
-    { "fromRow": 0,  "fromCol": 0,  "toMapId": "map-015", "toRow": 19, "toCol": 10, "label": "💛 光の聖域へ…" }
+    {
+      "fromRow": 19,
+      "fromCol": 11,
+      "toMapId": "map-006",
+      "toRow": 0,
+      "toCol": 4,
+      "label": "✨ セレスティア聖域へ…"
+    },
+    {
+      "fromRow": 0,
+      "fromCol": 0,
+      "toMapId": "map-015",
+      "toRow": 19,
+      "toCol": 10,
+      "label": "💛 光の聖域へ…"
+    }
   ],
   "map-010": [
-    { "fromRow": 0,  "fromCol": 19, "toMapId": "map-007", "toRow": 19, "toCol": 18, "label": "🕳 アビスの奈落へ…" },
-    { "fromRow": 19, "fromCol": 0,  "toMapId": "map-016", "toRow": 0,  "toCol": 10, "label": "🖤 闇の神殿へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 19,
+      "toMapId": "map-007",
+      "toRow": 19,
+      "toCol": 18,
+      "label": "🕳 アビスの奈落へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 0,
+      "toMapId": "map-016",
+      "toRow": 0,
+      "toCol": 10,
+      "label": "🖤 闇の神殿へ…"
+    },
+    {
+      "fromRow": 10,
+      "fromCol": 19,
+      "toMapId": "map-019",
+      "toRow": 10,
+      "toCol": 1,
+      "label": "🚪 風車町ゼフェリアへ",
+      "showOnWorldMap": true
+    }
   ],
   "map-011": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-004", "toRow": 19, "toCol": 4,  "label": "🌲 ミルウッドの深森へ…" },
-    { "fromRow": 19, "fromCol": 10, "toMapId": "map-017", "toRow": 0,  "toCol": 10, "label": "🏛️ 古代の神殿へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-004",
+      "toRow": 19,
+      "toCol": 4,
+      "label": "🌲 ミルウッドの深森へ…"
+    },
+    {
+      "fromRow": 19,
+      "fromCol": 10,
+      "toMapId": "map-017",
+      "toRow": 0,
+      "toCol": 10,
+      "label": "🏛️ 古代の神殿へ…"
+    }
   ],
   "map-012": [
-    { "fromRow": 19, "fromCol": 11, "toMapId": "map-003", "toRow": 0,  "toCol": 0,  "label": "❄ フロストハイム雪原へ…" },
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-018", "toRow": 19, "toCol": 10, "label": "❄ 氷雪神殿へ…" }
+    {
+      "fromRow": 19,
+      "fromCol": 11,
+      "toMapId": "map-003",
+      "toRow": 0,
+      "toCol": 0,
+      "label": "❄ フロストハイム雪原へ…"
+    },
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-018",
+      "toRow": 19,
+      "toCol": 10,
+      "label": "❄ 氷雪神殿へ…"
+    }
   ],
   "map-013": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-005", "toRow": 19, "toCol": 5,  "label": "🌋 ヴォルカノス火山帯へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-005",
+      "toRow": 19,
+      "toCol": 5,
+      "label": "🌋 ヴォルカノス火山帯へ…"
+    }
   ],
   "map-014": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-008", "toRow": 19, "toCol": 10, "label": "🌊 海底神殿へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-008",
+      "toRow": 19,
+      "toCol": 10,
+      "label": "🌊 海底神殿へ…"
+    }
   ],
   "map-015": [
-    { "fromRow": 19, "fromCol": 10, "toMapId": "map-009", "toRow": 0,  "toCol": 1,  "label": "🌟 天空聖殿へ…" }
+    {
+      "fromRow": 19,
+      "fromCol": 10,
+      "toMapId": "map-009",
+      "toRow": 0,
+      "toCol": 1,
+      "label": "🌟 天空聖殿へ…"
+    }
   ],
   "map-016": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-010", "toRow": 19, "toCol": 1,  "label": "👿 魔王城へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-010",
+      "toRow": 19,
+      "toCol": 1,
+      "label": "👿 魔王城へ…"
+    }
   ],
   "map-017": [
-    { "fromRow": 0,  "fromCol": 10, "toMapId": "map-011", "toRow": 19, "toCol": 10, "label": "☠️ 毒の沼地へ…" }
+    {
+      "fromRow": 0,
+      "fromCol": 10,
+      "toMapId": "map-011",
+      "toRow": 19,
+      "toCol": 10,
+      "label": "☠️ 毒の沼地へ…"
+    }
   ],
   "map-018": [
-    { "fromRow": 19, "fromCol": 10, "toMapId": "map-012", "toRow": 0,  "toCol": 9,  "label": "🧊 氷の魔窟へ…" }
+    {
+      "fromRow": 19,
+      "fromCol": 10,
+      "toMapId": "map-012",
+      "toRow": 0,
+      "toCol": 9,
+      "label": "🧊 氷の魔窟へ…"
+    }
+  ],
+  "map-019": [
+    {
+      "fromRow": 10,
+      "fromCol": 0,
+      "toMapId": "map-010",
+      "toRow": 10,
+      "toCol": 18,
+      "label": "🚪 魔王城へ",
+      "showOnWorldMap": true
+    }
   ]
 }

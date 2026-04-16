@@ -18,6 +18,8 @@ import MouseIcon from "@mui/icons-material/Mouse";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import OpenWithIcon from "@mui/icons-material/OpenWith";
+import UpgradeIcon from "@mui/icons-material/Upgrade";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { MAP_TILE_MASTER } from "../data/map/mapChipConfig";
 import { MAP_IDS, MAP_MASTER_MAP, MAP_TRANSITIONS, MAP_ADDITIONS, TileType } from "../data/masters/mapMaster";
 import type { MapTransition, MapMasterAddition } from "../data/masters/mapMaster";
@@ -70,6 +72,38 @@ function generateNewMapId(existingIds: string[]): string {
 
 function makeBlankGrid(rows: number, cols: number): number[][] {
   return Array.from({ length: rows }, () => Array(cols).fill(0));
+}
+
+/** 昇格用コードスニペットを生成 */
+function buildPromoteSnippets(m: MapMasterAddition) {
+  // map-019 → "019" → "19" → "19" (import変数名用に先頭0除去)
+  const num = m.id.replace(/^map-0*/, "");
+  const numPadded = m.id.replace(/^map-/, ""); // "019"
+  const constName = `MAP${num}_TILES`;
+  const csvFile = `map-${numPadded}.csv`;
+
+  const cellMasterSnippet =
+    `// mapCellMaster.ts に追加\n` +
+    `import map${num}Csv from '../maps/${csvFile}?raw';\n` +
+    `export const ${constName}: number[][] = parseCsv(map${num}Csv);`;
+
+  const mapEntry =
+    `// mapMaster.ts の STATIC_MAP_MASTER 末尾に追加\n` +
+    `  {\n` +
+    `    id: "${m.id}",\n` +
+    `    name: "${m.name}",\n` +
+    `    description: "${m.description}",\n` +
+    `    emoji: "${m.emoji}",\n` +
+    `    enemySpawnTiles: [TileType.GRASS],\n` +
+    `    enemyIds: [],\n` +
+    `    baseLevel: ${m.baseLevel},\n` +
+    `    levelVariance: ${m.levelVariance},\n` +
+    `    defaultPos: { row: ${m.defaultPos.row}, col: ${m.defaultPos.col} },\n` +
+    `    transitions: MAP_TRANSITIONS["${m.id}"] ?? [],\n` +
+    `    tileMap: ${constName},\n` +
+    `  },`;
+
+  return { csvFile, constName, cellMasterSnippet, mapEntry };
 }
 
 function makeNewEvent(mapId: string, row: number, col: number): StoryEvent {
@@ -500,6 +534,42 @@ export default function MapEditorPage() {
     }
   };
 
+  // ─── 静的マップへ昇格 ────────────────────────────────────────────────────
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false);
+  const [promoteDone, setPromoteDone] = useState(false);
+
+  const promoteToStatic = async () => {
+    const mapNum = selectedMapId.replace(/^map-/, ""); // "019"
+    const filename = `map-${mapNum}.csv`;
+    if ("showSaveFilePicker" in window) {
+      try {
+        const handle = await (window as unknown as { showSaveFilePicker: (o: object) => Promise<FileSystemFileHandle> })
+          .showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: "CSV", accept: { "text/csv": [".csv"] } }],
+          });
+        const w = await handle.createWritable();
+        await w.write(toCsv(grid));
+        await w.close();
+        setPromoteDone(true);
+        setShowPromoteDialog(true);
+      } catch { /* cancel */ }
+    } else {
+      downloadCsv();
+      setPromoteDone(true);
+      setShowPromoteDialog(true);
+    }
+  };
+
+  const removeFromAdditions = () => {
+    setAdditions(prev => prev.filter(m => m.id !== selectedMapId));
+    loadMap(MAP_LIST[0].id);
+    setShowPromoteDialog(false);
+  };
+
+  const currentAddition = additions.find(m => m.id === selectedMapId) ?? null;
+  const promoteSnippets = currentAddition ? buildPromoteSnippets(currentAddition) : null;
+
   // ─── レンダリング ────────────────────────────────────────────────────────
   const selectedTileInfo = MAP_TILE_MASTER[selectedCell ? grid[selectedCell.row]?.[selectedCell.col] ?? 0 : 0];
 
@@ -577,11 +647,17 @@ export default function MapEditorPage() {
             <Button variant="outlined" size="small" startIcon={<RedoIcon />} onClick={redo} disabled={!canRedo} sx={{ flex: 1, fontSize: 11 }}>やり直し</Button>
           </Box>
           {isAdditionMap ? (
-            <Button variant="contained" size="small"
-              color={additionsSaveStatus === "saved" ? "success" : "warning"}
-              startIcon={<SaveIcon />} onClick={exportAdditions} fullWidth sx={{ fontSize: 11 }}>
-              {additionsSaveStatus === "saved" ? "保存済" : "追加マップを保存"}
-            </Button>
+            <>
+              <Button variant="outlined" size="small"
+                color={additionsSaveStatus === "saved" ? "success" : "warning"}
+                startIcon={<SaveIcon />} onClick={exportAdditions} fullWidth sx={{ fontSize: 11 }}>
+                {additionsSaveStatus === "saved" ? "保存済" : "作業中を保存"}
+              </Button>
+              <Button variant="contained" size="small" color="warning"
+                startIcon={<UpgradeIcon />} onClick={promoteToStatic} fullWidth sx={{ fontSize: 11, fontWeight: 700 }}>
+                静的マップに昇格 →
+              </Button>
+            </>
           ) : (
             <Box sx={{ display: "flex", gap: 0.5 }}>
               <Button variant="contained" size="small" color={saveStatus === "saved" ? "success" : "warning"} startIcon={<SaveIcon />} onClick={overwriteCsv} sx={{ flex: 1, fontSize: 11 }}>
@@ -940,6 +1016,82 @@ export default function MapEditorPage() {
           </Button>
         </Box>
       </Box>
+
+      {/* ── 静的マップ昇格ダイアログ ── */}
+      <Dialog open={showPromoteDialog} onClose={() => setShowPromoteDialog(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { bgcolor: "#0d0d1a", border: "1px solid rgba(255,152,0,0.5)", borderRadius: 2 } }}>
+        <DialogTitle sx={{ fontSize: 14, fontWeight: 700, pb: 1 }}>
+          ▲ 静的マップへ昇格 — {selectedMapId}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "4px !important" }}>
+          {promoteDone && (
+            <Typography variant="caption" sx={{ color: "#4caf50", fontWeight: 700 }}>
+              ✓ {promoteSnippets?.csvFile} を保存しました。src/data/maps/ フォルダに配置してください。
+            </Typography>
+          )}
+
+          {/* mapCellMaster.ts スニペット */}
+          {promoteSnippets && (
+            <>
+              <Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: "#ff9800", fontWeight: 700 }}>
+                    ① mapCellMaster.ts に追加
+                  </Typography>
+                  <Tooltip title="コピー">
+                    <IconButton size="small" onClick={() => navigator.clipboard.writeText(promoteSnippets.cellMasterSnippet)}
+                      sx={{ color: "#888", p: 0.25 }}>
+                      <ContentCopyIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <Box component="pre" sx={{
+                  m: 0, p: 1, bgcolor: "#080810", borderRadius: 1,
+                  border: "1px solid #2a2a3e", fontSize: 11, fontFamily: "monospace",
+                  color: "#a8d8a8", overflowX: "auto", whiteSpace: "pre-wrap",
+                }}>
+                  {promoteSnippets.cellMasterSnippet}
+                </Box>
+              </Box>
+
+              {/* mapMaster.ts スニペット */}
+              <Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: "#ff9800", fontWeight: 700 }}>
+                    ② mapMaster.ts の STATIC_MAP_MASTER 末尾に追加
+                  </Typography>
+                  <Tooltip title="コピー">
+                    <IconButton size="small" onClick={() => navigator.clipboard.writeText(promoteSnippets.mapEntry)}
+                      sx={{ color: "#888", p: 0.25 }}>
+                      <ContentCopyIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <Box component="pre" sx={{
+                  m: 0, p: 1, bgcolor: "#080810", borderRadius: 1,
+                  border: "1px solid #2a2a3e", fontSize: 11, fontFamily: "monospace",
+                  color: "#a8d8a8", overflowX: "auto", whiteSpace: "pre-wrap",
+                }}>
+                  {promoteSnippets.mapEntry}
+                </Box>
+              </Box>
+
+              <Box sx={{ p: 1, bgcolor: "rgba(255,152,0,0.05)", border: "1px solid rgba(255,152,0,0.2)", borderRadius: 1 }}>
+                <Typography variant="caption" sx={{ color: "#aaa" }}>
+                  ③ 上記のコードを追加後、<strong style={{ color: "#ff9800" }}>「追加データから削除」</strong>を押してください。
+                  削除前はまだ additions から読み込まれます。
+                </Typography>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2, gap: 1 }}>
+          <Button onClick={() => setShowPromoteDialog(false)} sx={{ color: "#888", fontSize: 12 }}>閉じる</Button>
+          <Button variant="outlined" color="error" onClick={removeFromAdditions} sx={{ fontSize: 12 }}>
+            追加データから削除
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── 新規マップ作成ダイアログ ── */}
       <Dialog open={showNewMapDialog} onClose={() => setShowNewMapDialog(false)} maxWidth="xs" fullWidth

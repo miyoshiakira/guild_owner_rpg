@@ -28,6 +28,7 @@ import {
   MAP16_TILES,
   MAP17_TILES,
   MAP18_TILES,
+  MAP19_TILES,
 } from "./mapCellMaster";
 
 // ── タイル種別 Enum ────────────────────────────────────────────────────────
@@ -208,6 +209,7 @@ export const MAP_IDS = {
   CELESTIAL_SANCTUARY: "map-016",
   DEEP_SEA: "map-017",
   ICE_CAVERN: "map-018",
+  WIND_VILLAGE: "map-019",
 } as const;
 
 // ── 型定義 ────────────────────────────────────────────────────────────────
@@ -773,6 +775,19 @@ const STATIC_MAP_MASTER: MapMasterData[] = [
     defaultPos: { row: 19, col: 9 },
     transitions: MAP_TRANSITIONS["map-018"] ?? [],
     tileMap: MAP18_TILES,
+  },
+  {
+    id: "map-019",
+    name: "風車村ゼフィリア",
+    description: "巨大な風車がいくつもあり、村人はその動力で穀物を挽いたり、巨大な扇風機を回して霧を晴らしたりして暮らしている。",
+    emoji: "🍃",
+    enemySpawnTiles: [TileType.GRASS],
+    enemyIds: [],
+    baseLevel: 30,
+    levelVariance: 3,
+    defaultPos: { row: 0, col: 0 },
+    transitions: MAP_TRANSITIONS["map-019"] ?? [],
+    tileMap: MAP19_TILES,
   },
 ];
 

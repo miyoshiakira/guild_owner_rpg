@@ -4,13 +4,13 @@
  * 使い方: SPRITES["スライム.png"]  → "/data/image/スライム.png"
  */
 export function getSpriteUrl(filename: string): string {
-  return `/data/image/${filename}`;
+  return `src/data/image/${filename}`;
 }
 
 // 後方互換用: SPRITES["スライム.png"] でアクセス可能な Proxy
 export const SPRITES: Record<string, string> = new Proxy({} as Record<string, string>, {
   get(_target, prop: string) {
-    return `/data/image/${prop}`;
+    return `src/data/image/${prop}`;
   },
   has(_target, prop: string) {
     return typeof prop === "string" && prop.endsWith(".png");

@@ -26,7 +26,7 @@ import map015Csv from '../maps/map-015.csv?raw';
 import map016Csv from '../maps/map-016.csv?raw';
 import map017Csv from '../maps/map-017.csv?raw';
 import map018Csv from '../maps/map-018.csv?raw';
-
+import map019Csv from '../maps/map-019.csv?raw';
 // CSVの文字列を二次元配列に変換
 function parseCsv(csv: string): number[][] {
   return csv.trim().split('\n').map(row =>
@@ -53,3 +53,4 @@ export const MAP15_TILES: number[][] = parseCsv(map015Csv);
 export const MAP16_TILES: number[][] = parseCsv(map016Csv);
 export const MAP17_TILES: number[][] = parseCsv(map017Csv);
 export const MAP18_TILES: number[][] = parseCsv(map018Csv);
+export const MAP19_TILES: number[][] = parseCsv(map019Csv);
